@@ -200,10 +200,21 @@ def file_engine():
 @app.route('/logs', methods=['GET', 'OPTIONS'])
 def get_logs():
     if request.method == 'OPTIONS': return _corsify_response(jsonify({'status': 'ok'}))
+    
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
+    personal_only = request.args.get('personal', 'false').lower() == 'true'
+
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute("SELECT * FROM logs ORDER BY id DESC LIMIT 50").fetchall()
+        if personal_only:
+            # Only fetch logs matching the user's exact IP
+            rows = conn.execute("SELECT * FROM logs WHERE ip = ? ORDER BY id DESC LIMIT 50", (ip,)).fetchall()
+        else:
+            # Fetch all global logs (for the Threat Map)
+            rows = conn.execute("SELECT * FROM logs ORDER BY id DESC LIMIT 50").fetchall()
+            
         logs_list = [dict(r) for r in rows]
+        
     return _corsify_response(jsonify({"logs": logs_list}))
 
 # --- ROUTE 4: PANIC WIPE ---

@@ -2035,7 +2035,8 @@ async function refreshThreatMap() {
 =============================================================== */
 async function fetchLogs() {
     try {
-        const res = await fetch(BACKEND + 'logs');
+        // We added ?personal=true so the user only sees their own IP's activity in the table
+        const res = await fetch(BACKEND + 'logs?personal=true');
         const data = await res.json();
         const container = document.getElementById('log-container');
         if (!container) return;
@@ -2060,24 +2061,6 @@ async function fetchLogs() {
         });
     } catch(e) {}
 }
-
-function openLogs() {
-    document.getElementById('logModal').classList.add('open');
-    animateModalOpen('logModal');
-    fetchLogs();
-}
-
-async function wipeScreen() {
-    try { await fetch(BACKEND + 'panic', { method: 'POST' }); } catch(e) {}
-    document.querySelectorAll('input[type="text"],textarea').forEach(el => el.value = '');
-    document.getElementById('text-output').textContent = 'System wiped.';
-    document.getElementById('text-output').style.color = 'var(--text-muted)';
-    document.getElementById('qr-container').style.display = 'none';
-    if (window.gsap) gsap.to('.page-wrap', { opacity: 0, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.in' });
-    setTimeout(() => alert('⚠ SECURE WIPE EXECUTED'), 300);
-}
-
-
 /* ===============================================================
    HISTORY
 =============================================================== */
