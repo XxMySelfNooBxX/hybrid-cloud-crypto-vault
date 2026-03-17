@@ -153,14 +153,17 @@ def file_engine():
             encrypted_dek = enc_res.ciphertext
             
             len_dek = len(encrypted_dek).to_bytes(2, byteorder='big')
-            # Pack Original Filename Length (1 byte) + Filename Bytes
+            
             name_bytes = filename.encode('utf-8')
             len_name = len(name_bytes).to_bytes(1, byteorder='big')
             
             final_payload = len_dek + encrypted_dek + iv + encryptor.tag + len_name + name_bytes + ciphertext
             
             log_event(ip, f"FILE ENCRYPT ({filename})", "SUCCESS", user_agent)
-            return send_file(io.BytesIO(final_payload), download_name=filename+".enc", as_attachment=True)
+            
+            # THE FIX: Wrap the send_file response in our CORS helper!
+            response = send_file(io.BytesIO(final_payload), download_name=filename+".enc", as_attachment=True)
+            return _corsify_response(response)
 
         else: # Decrypt
             len_dek = int.from_bytes(file_bytes[0:2], 'big')
@@ -184,7 +187,10 @@ def file_engine():
             decrypted_bytes = decryptor.update(ciphertext) + decryptor.finalize()
 
             log_event(ip, f"FILE DECRYPT ({orig_name})", "SUCCESS", user_agent)
-            return send_file(io.BytesIO(decrypted_bytes), download_name=orig_name, as_attachment=True)
+            
+            # THE FIX: Wrap the send_file response in our CORS helper!
+            response = send_file(io.BytesIO(decrypted_bytes), download_name=orig_name, as_attachment=True)
+            return _corsify_response(response)
 
     except Exception as e:
         log_event(ip, "FILE OP", f"ERROR", user_agent)
