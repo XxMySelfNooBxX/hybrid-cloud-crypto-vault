@@ -18,6 +18,7 @@
     --success: #39ff14;
     --danger: #ff3333;
     --warning: #ffaa00;
+    --theme-transition: 0s; /* updated dynamically during theme switch */
 }
 body.light-theme {
     --neon-cyan: #0055cc;
@@ -46,6 +47,31 @@ body {
     font-family: 'Share Tech Mono', monospace;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background var(--theme-transition) ease, color var(--theme-transition) ease;
+}
+
+/* ============================================================
+   THEME FLASH OVERLAY
+============================================================ */
+#theme-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    pointer-events: none;
+    opacity: 0;
+}
+#theme-flash.flash-light {
+    background: #ffffff;
+    animation: themeFlash 0.45s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+#theme-flash.flash-dark {
+    background: #030508;
+    animation: themeFlash 0.45s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+@keyframes themeFlash {
+    0%   { opacity: 0; }
+    18%  { opacity: 0.6; }
+    100% { opacity: 0; }
 }
 
 /* ============================================================
@@ -57,6 +83,7 @@ body {
     width: 100%; height: 100%;
     z-index: 0;
     pointer-events: none;
+    transition: opacity 0.4s ease;
 }
 body.light-theme #constellation-canvas { opacity: 0.35; }
 
@@ -237,6 +264,7 @@ body.light-theme #constellation-canvas { opacity: 0.35; }
     position: relative;
     display: inline-block;
     text-shadow: 0 0 20px rgba(0,243,255,0.5);
+    transition: color 0.4s ease, text-shadow 0.4s ease;
 }
 .glitch-title::before,
 .glitch-title::after {
@@ -321,6 +349,7 @@ body.light-theme #constellation-canvas { opacity: 0.35; }
         inset 0 -1px 0 rgba(0,0,0,0.3),
         0 24px 80px rgba(0,0,0,0.6),
         0 0 60px rgba(0,243,255,0.04);
+    transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 body.light-theme .panel {
     box-shadow: 0 4px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
@@ -382,7 +411,7 @@ input[type="text"], input[type="password"], textarea, select {
     font-size: 14px;
     outline: none;
     border-radius: 4px;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.4s, color 0.4s;
 }
 input:focus, textarea:focus, select:focus {
     border-color: var(--neon-cyan);
@@ -391,6 +420,91 @@ input:focus, textarea:focus, select:focus {
 textarea { resize: vertical; min-height: 80px; }
 select option { background: #050a14; }
 body.light-theme select option { background: #fff; }
+
+/* ============================================================
+   INLINE KEY REVEAL (eye button)
+============================================================ */
+.key-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.key-input-wrap input {
+    flex: 1;
+    padding-right: 44px; /* room for eye btn */
+}
+.eye-btn {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 15px;
+    line-height: 1;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+}
+.eye-btn:hover { color: var(--neon-cyan); }
+.eye-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ============================================================
+   KEY DERIVATION DISPLAY
+============================================================ */
+.kdf-panel {
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(0,243,255,0.03);
+    border: 1px solid rgba(0,243,255,0.1);
+    border-radius: 4px;
+    display: none; /* shown when key has content */
+    animation: kdfFadeIn 0.25s ease;
+}
+.kdf-panel.visible { display: block; }
+@keyframes kdfFadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+.kdf-title {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.kdf-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+.kdf-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.kdf-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+.kdf-value {
+    font-size: 12px;
+    color: var(--neon-cyan);
+    letter-spacing: 0.5px;
+}
+.kdf-bar-wrap {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.kdf-bar-label { font-size: 9px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+.kdf-bar-track { flex: 1; height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px; overflow: hidden; }
+.kdf-bar-fill { height: 100%; border-radius: 1px; transition: width 0.5s cubic-bezier(0.34,1.56,0.64,1), background 0.4s; }
 
 /* ============================================================
    STRENGTH BAR
@@ -474,7 +588,7 @@ body.light-theme select option { background: #fff; }
 
 /* Key input row */
 .key-row { display: flex; gap: 8px; }
-.key-row input { flex: 1; }
+.key-row .key-input-wrap { flex: 1; }
 
 /* ============================================================
    OUTPUT BOX
@@ -492,9 +606,30 @@ body.light-theme select option { background: #fff; }
     font-size: 13px;
     word-break: break-all;
     line-height: 1.6;
-    max-height: 120px;
+    max-height: 140px;
     overflow-y: auto;
 }
+/* Formatted ciphertext groups */
+#text-output .cipher-group {
+    display: inline;
+    letter-spacing: 0.5px;
+}
+#text-output .cipher-space {
+    display: inline-block;
+    width: 6px;
+}
+.cipher-meta {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-top: 1px solid rgba(0,243,255,0.07);
+    padding-top: 8px;
+}
+.cipher-meta span { color: var(--neon-cyan); }
 .output-actions {
     display: flex;
     gap: 8px;
@@ -566,6 +701,7 @@ body.light-theme select option { background: #fff; }
     backdrop-filter: blur(20px);
     opacity: 1 !important;
     visibility: visible !important;
+    transition: background 0.4s ease, border-color 0.4s ease;
 }
 body.light-theme .security-bar {
     background: rgba(240,245,255,0.95);
@@ -628,6 +764,7 @@ body.light-theme .security-bar {
         inset 0 1px 0 rgba(78,201,232,0.12),
         0 0 80px rgba(0,0,0,0.7),
         0 0 40px rgba(0,243,255,0.06);
+    transition: background 0.4s ease;
 }
 body.light-theme .modal-box {
     background: rgba(248, 250, 255, 0.88);
@@ -657,7 +794,6 @@ body.light-theme .modal-box {
 ============================================================ */
 .log-table-header, .log-entry {
     display: grid;
-    /* Adjusted the IP column (2nd value) to be slightly wider */
     grid-template-columns: 1.1fr 1.1fr 0.8fr 0.8fr 1.4fr 0.8fr;
     gap: 8px;
     padding: 9px 10px;
@@ -665,14 +801,11 @@ body.light-theme .modal-box {
     border-bottom: 1px solid var(--border);
     align-items: center;
 }
-
-/* Force long unbroken strings (like IPv6 addresses) to wrap */
 .log-table-header span, .log-entry span {
     min-width: 0;
     word-break: break-word;
     overflow-wrap: anywhere;
 }
-
 .log-table-header { color: var(--text-muted); font-size: 10px; letter-spacing: 1px; }
 .log-entry { color: var(--text-secondary); }
 .log-entry:hover { background: rgba(0,243,255,0.03); }
@@ -732,7 +865,6 @@ body.light-theme .modal-box {
     height: calc(100vh - 200px);
     word-break: break-all;
 }
-/* Result banner sits OUTSIDE #brute-console, centered over the overlay */
 #brute-result {
     display: none;
     position: fixed;
@@ -969,6 +1101,126 @@ body.light-theme {
 }
 
 /* ============================================================
+   ENCRYPTED CHAT MODAL
+============================================================ */
+#chatModal .modal-box { max-width: 680px; }
+.chat-setup { margin-bottom: 16px; }
+.chat-room-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: flex-end;
+}
+.chat-room-row .input-group { flex: 1; margin-bottom: 0; }
+.chat-room-row .btn { flex: none; height: 46px; padding: 0 16px; }
+.chat-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    min-height: 20px;
+}
+.chat-status-bar .status-dot { width: 6px; height: 6px; }
+.chat-window {
+    height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(0,0,0,0.25);
+    padding: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+body.light-theme .chat-window { background: rgba(240,245,255,0.5); }
+.chat-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeSlide 0.2s ease-out;
+}
+.chat-msg.mine { align-items: flex-end; }
+.chat-msg.theirs { align-items: flex-start; }
+.chat-bubble {
+    max-width: 78%;
+    padding: 9px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+.chat-msg.mine .chat-bubble {
+    background: rgba(0,243,255,0.1);
+    border: 1px solid rgba(0,243,255,0.25);
+    color: var(--text-primary);
+}
+.chat-msg.theirs .chat-bubble {
+    background: rgba(123,104,238,0.1);
+    border: 1px solid rgba(123,104,238,0.25);
+    color: var(--text-primary);
+}
+.chat-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+}
+.chat-input-row input {
+    flex: 1;
+    padding: 11px 14px;
+    font-size: 13px;
+}
+.chat-input-row .btn {
+    flex: none;
+    padding: 0 18px;
+    height: 46px;
+    font-size: 12px;
+}
+.chat-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-align: center;
+    line-height: 2;
+}
+.chat-cipher-peek {
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    opacity: 0.6;
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+.chat-e2e-banner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--success);
+    letter-spacing: 1px;
+    padding: 6px 10px;
+    background: rgba(57,255,20,0.05);
+    border: 1px solid rgba(57,255,20,0.15);
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+/* ============================================================
    MOBILE — 480px and below
 ============================================================ */
 @media (max-width: 480px) {
@@ -980,7 +1232,7 @@ body.light-theme {
     .panel { padding: 18px 16px; }
     .tab { font-size: 10px; letter-spacing: 0.8px; padding: 10px 6px; }
     .key-row { flex-direction: column; gap: 8px; }
-    .key-row input { width: 100%; }
+    .key-row .key-input-wrap { width: 100%; }
     .btn-hack { width: 100%; padding: 10px; font-size: 11px; }
     .btn-row { flex-direction: column; gap: 8px; }
     .btn-row .btn { width: 100%; padding: 13px; font-size: 12px; }
@@ -1011,6 +1263,8 @@ body.light-theme {
     .boot-logo { font-size: 28px; letter-spacing: 3px; }
     .boot-lines { font-size: 10px; }
     #abort-btn { width: 220px; padding: 14px; font-size: 13px; }
+    .kdf-grid { grid-template-columns: repeat(2, 1fr); }
+    .chat-window { height: 240px; }
 }
 
 /* ============================================================
@@ -1279,9 +1533,7 @@ body.light-theme .stat-card { background: rgba(255,255,255,0.5); }
     letter-spacing: 1.5px;
     text-transform: uppercase;
 }
-.stats-chart-wrap {
-    margin-bottom: 20px;
-}
+.stats-chart-wrap { margin-bottom: 20px; }
 .stats-chart-title {
     font-size: 11px;
     color: var(--text-muted);
@@ -1359,7 +1611,7 @@ body.light-theme .stats-bar-track { background: rgba(0,0,0,0.06); }
 }
 
 /* ============================================================
-   FILE SUB-TABS (Single / Batch toggle inside File tab)
+   FILE SUB-TABS
 ============================================================ */
 .file-sub-tabs {
     display: flex;
@@ -1393,7 +1645,7 @@ body.light-theme .stats-bar-track { background: rgba(0,0,0,0.06); }
 .file-sub-content.active { display: block; }
 
 /* ============================================================
-   BATCH MODE TOGGLE (Encrypt / Decrypt)
+   BATCH MODE TOGGLE
 ============================================================ */
 .batch-mode-toggle {
     display: flex;

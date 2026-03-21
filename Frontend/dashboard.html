@@ -14,9 +14,8 @@
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════
-     BOOT SEQUENCE OVERLAY
-═══════════════════════════════════════════ -->
+<div id="theme-flash"></div>
+
 <div id="boot-overlay">
     <div class="boot-logo" id="boot-logo">HYBRID VAULT</div>
     <div class="boot-lines" id="boot-lines">
@@ -33,14 +32,8 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     CONSTELLATION BACKGROUND
-═══════════════════════════════════════════ -->
 <canvas id="constellation-canvas"></canvas>
 
-<!-- ═══════════════════════════════════════════
-     HUD SCAN OVERLAY
-═══════════════════════════════════════════ -->
 <div id="hud-overlay">
     <div class="hud-scanline"></div>
     <div class="hud-corner tl"></div>
@@ -52,20 +45,13 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     BRUTE FORCE OVERLAY
-═══════════════════════════════════════════ -->
 <div id="brute-overlay">
     <div id="brute-console"></div>
     <div id="brute-result"></div>
     <button id="abort-btn" onclick="closeBrute()">&#9940; ABORT SEQUENCE</button>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     MAIN CONTENT
-═══════════════════════════════════════════ -->
 <div class="page-wrap">
-
     <div class="vault-header">
         <div>
             <h1 class="glitch-title" data-text="HYBRID VAULT">HYBRID VAULT</h1>
@@ -76,6 +62,7 @@
             </div>
             <button class="icon-btn" onclick="open2FASetup()" title="2FA Settings">&#x1F510;</button>
             <button class="icon-btn" onclick="openThreatMap()" title="Threat Map">&#x1F5FA;&#xFE0F;</button>
+            <button class="icon-btn" onclick="openEncryptedChat()" title="Encrypted Chat">&#x1F4AC;</button>
             <button class="icon-btn" onclick="openLockSettings()" title="Auto-Lock Settings" id="lock-settings-btn">&#x23F0;</button>
             <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle Theme">&#x2600;&#xFE0F;</button>
         </div>
@@ -86,14 +73,12 @@
         AES-256-GCM &nbsp;|&nbsp; KMS ENVELOPE ENCRYPTION &nbsp;|&nbsp; FORENSIC AUDIT &nbsp;|&nbsp; LEVEL 5
     </div>
 
-    <!-- ─── MAIN PANEL ─────────────────────── -->
     <div class="panel" id="main-panel">
         <div class="tabs">
             <button class="tab active" onclick="switchTab('text', this)">Text Encryption</button>
             <button class="tab" onclick="switchTab('file', this)">File Encryption</button>
         </div>
 
-        <!-- TEXT TAB -->
         <div id="text-mode" class="mode-content active">
             <div class="input-group">
                 <label>Secure Data Input</label>
@@ -102,21 +87,49 @@
             <div class="input-group">
                 <label>Encryption Key</label>
                 <div class="key-row">
-                    <input type="text" id="text-key" placeholder="Enter password..."
-                           oninput="checkStrength(this.value,'text-fill','text-time')">
+                    <div class="key-input-wrap">
+                        <input type="password" id="text-key" placeholder="Enter password..."
+                               oninput="checkStrength(this.value,'text-fill','text-time'); updateKDF(this.value,'text-kdf')">
+                        <button class="eye-btn" type="button" onclick="toggleReveal('text-key', this)" title="Show/hide key">
+                            <svg id="eye-text-key-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
+                                <circle cx="10" cy="10" r="2.5"/>
+                            </svg>
+                        </button>
+                    </div>
                     <button class="btn btn-sm btn-hack" onclick="startBruteForce()">&#x26A1; Sim Hack</button>
                 </div>
                 <div class="strength-row">
                     <div class="strength-track"><div class="strength-fill" id="text-fill"></div></div>
                     <span class="crack-time" id="text-time"></span>
                 </div>
+                <div class="kdf-panel" id="text-kdf">
+                    <div class="kdf-title">&#x26D3; Key Derivation Parameters (PBKDF2)</div>
+                    <div class="kdf-grid">
+                        <div class="kdf-item">
+                            <span class="kdf-label">Algorithm</span>
+                            <span class="kdf-value" id="text-kdf-algo">PBKDF2-SHA256</span>
+                        </div>
+                        <div class="kdf-item">
+                            <span class="kdf-label">Iterations</span>
+                            <span class="kdf-value" id="text-kdf-iter">210,000</span>
+                        </div>
+                        <div class="kdf-item">
+                            <span class="kdf-label">Output</span>
+                            <span class="kdf-value">256-bit AES</span>
+                        </div>
+                    </div>
+                    <div class="kdf-bar-wrap">
+                        <span class="kdf-bar-label">Entropy</span>
+                        <div class="kdf-bar-track"><div class="kdf-bar-fill" id="text-kdf-bar" style="width:0%"></div></div>
+                        <span class="kdf-value" id="text-kdf-bits" style="font-size:11px;white-space:nowrap">0 bits</span>
+                    </div>
+                </div>
             </div>
             <div class="btn-row">
                 <button class="btn btn-primary" id="btn-text-encrypt" onclick="processText('encrypt')">
                     <svg class="lock-icon" id="lock-text-encrypt" viewBox="0 0 16 18" fill="none">
-                        <g class="lock-shackle">
-                            <path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                        </g>
+                        <g class="lock-shackle"><path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></g>
                         <rect class="lock-body" x="2" y="7.5" width="12" height="9" rx="2" fill="currentColor" opacity="0.9"/>
                         <circle cx="8" cy="12" r="1.5" fill="var(--dark-bg,#030508)"/>
                     </svg>
@@ -124,9 +137,7 @@
                 </button>
                 <button class="btn btn-secondary" id="btn-text-decrypt" onclick="processText('decrypt')">
                     <svg class="lock-icon lock-unlocked" id="lock-text-decrypt" viewBox="0 0 16 18" fill="none">
-                        <g class="lock-shackle">
-                            <path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                        </g>
+                        <g class="lock-shackle"><path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></g>
                         <rect class="lock-body" x="2" y="7.5" width="12" height="9" rx="2" fill="currentColor" opacity="0.9"/>
                         <circle cx="8" cy="12" r="1.5" fill="white" opacity="0.3"/>
                     </svg>
@@ -135,6 +146,7 @@
             </div>
             <div class="output-wrap">
                 <div id="text-output">Waiting for encryption...</div>
+                <div id="cipher-meta-row" class="cipher-meta" style="display:none"></div>
                 <div class="output-actions">
                     <button class="btn btn-sm btn-primary" id="copy-btn" onclick="copyText()">&#x1F4CB; Copy</button>
                     <button class="btn btn-sm" id="qr-btn" onclick="generateQR()">&#x1F4F1; QR Code</button>
@@ -148,16 +160,12 @@
             </div>
         </div>
 
-        <!-- FILE TAB — Single file + Batch toggle -->
         <div id="file-mode" class="mode-content">
-
-            <!-- Sub-mode toggle -->
             <div class="file-sub-tabs">
                 <button class="file-sub-tab active" id="fsub-single" onclick="switchFileSub('single')">Single File</button>
                 <button class="file-sub-tab" id="fsub-batch" onclick="switchFileSub('batch')">Batch Encrypt</button>
             </div>
 
-            <!-- SINGLE FILE -->
             <div id="file-single" class="file-sub-content active">
                 <div class="input-group">
                     <label>Target File</label>
@@ -179,19 +187,47 @@
                 </div>
                 <div class="input-group">
                     <label>Encryption Key</label>
-                    <input type="text" id="file-key" placeholder="Enter password..."
-                           oninput="checkStrength(this.value,'file-fill','file-time')">
+                    <div class="key-input-wrap">
+                        <input type="password" id="file-key" placeholder="Enter password..."
+                               oninput="checkStrength(this.value,'file-fill','file-time'); updateKDF(this.value,'file-kdf')">
+                        <button class="eye-btn" type="button" onclick="toggleReveal('file-key', this)" title="Show/hide key">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
+                                <circle cx="10" cy="10" r="2.5"/>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="strength-row">
                         <div class="strength-track"><div class="strength-fill" id="file-fill"></div></div>
                         <span class="crack-time" id="file-time"></span>
+                    </div>
+                    <div class="kdf-panel" id="file-kdf">
+                        <div class="kdf-title">&#x26D3; Key Derivation Parameters (PBKDF2)</div>
+                        <div class="kdf-grid">
+                            <div class="kdf-item">
+                                <span class="kdf-label">Algorithm</span>
+                                <span class="kdf-value">PBKDF2-SHA256</span>
+                            </div>
+                            <div class="kdf-item">
+                                <span class="kdf-label">Iterations</span>
+                                <span class="kdf-value">210,000</span>
+                            </div>
+                            <div class="kdf-item">
+                                <span class="kdf-label">Output</span>
+                                <span class="kdf-value">256-bit AES</span>
+                            </div>
+                        </div>
+                        <div class="kdf-bar-wrap">
+                            <span class="kdf-bar-label">Entropy</span>
+                            <div class="kdf-bar-track"><div class="kdf-bar-fill" id="file-kdf-bar" style="width:0%"></div></div>
+                            <span class="kdf-value" id="file-kdf-bits" style="font-size:11px;white-space:nowrap">0 bits</span>
+                        </div>
                     </div>
                 </div>
                 <div class="btn-row">
                     <button class="btn btn-primary" id="btn-file-encrypt" onclick="processFile('encrypt')">
                         <svg class="lock-icon" id="lock-file-encrypt" viewBox="0 0 16 18" fill="none">
-                            <g class="lock-shackle">
-                                <path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                            </g>
+                            <g class="lock-shackle"><path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></g>
                             <rect class="lock-body" x="2" y="7.5" width="12" height="9" rx="2" fill="currentColor" opacity="0.9"/>
                             <circle cx="8" cy="12" r="1.5" fill="var(--dark-bg,#030508)"/>
                         </svg>
@@ -199,9 +235,7 @@
                     </button>
                     <button class="btn btn-secondary" id="btn-file-decrypt" onclick="processFile('decrypt')">
                         <svg class="lock-icon lock-unlocked" id="lock-file-decrypt" viewBox="0 0 16 18" fill="none">
-                            <g class="lock-shackle">
-                                <path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                            </g>
+                            <g class="lock-shackle"><path d="M4 8V5.5a4 4 0 0 1 8 0V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></g>
                             <rect class="lock-body" x="2" y="7.5" width="12" height="9" rx="2" fill="currentColor" opacity="0.9"/>
                             <circle cx="8" cy="12" r="1.5" fill="white" opacity="0.3"/>
                         </svg>
@@ -211,55 +245,44 @@
                 <div id="file-output">Ready...</div>
             </div>
 
-            <!-- BATCH FILES -->
             <div id="file-batch" class="file-sub-content">
-
-                <!-- Encrypt / Decrypt toggle -->
                 <div class="batch-mode-toggle">
-                    <button class="batch-mode-btn active" id="bmode-enc" onclick="setBatchMode('encrypt')">
-                        &#x1F512; Encrypt Files
-                    </button>
-                    <button class="batch-mode-btn" id="bmode-dec" onclick="setBatchMode('decrypt')">
-                        &#x1F513; Decrypt ZIP
-                    </button>
+                    <button class="batch-mode-btn active" id="bmode-enc" onclick="setBatchMode('encrypt')">&#x1F512; Encrypt Files</button>
+                    <button class="batch-mode-btn" id="bmode-dec" onclick="setBatchMode('decrypt')">&#x1F513; Decrypt ZIP</button>
                 </div>
-
-                <!-- Drop zone — changes hint based on mode -->
                 <div class="batch-drop-zone" id="batch-drop-zone">
                     <div class="drop-zone-icon" id="batch-dz-icon">&#x1F4C1;</div>
-                    <div class="batch-drop-zone-text" id="batch-dz-text">
-                        Drop multiple files here or <strong>click to browse</strong>
-                    </div>
+                    <div class="batch-drop-zone-text" id="batch-dz-text">Drop multiple files here or <strong>click to browse</strong></div>
                     <input type="file" id="batch-file-input" multiple onchange="handleBatchSelect(this)">
                 </div>
-
                 <div class="batch-file-list" id="batch-file-list" style="display:none"></div>
-
                 <div class="input-group">
                     <label id="batch-key-label">Encryption Key (applied to all files)</label>
-                    <input type="text" id="batch-key" placeholder="Enter password for all files...">
+                    <div class="key-input-wrap">
+                        <input type="password" id="batch-key" placeholder="Enter password for all files...">
+                        <button class="eye-btn" type="button" onclick="toggleReveal('batch-key', this)" title="Show/hide key">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
+                                <circle cx="10" cy="10" r="2.5"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-
                 <div class="batch-progress" id="batch-progress" style="display:none">
                     <div class="batch-progress-fill" id="batch-progress-fill"></div>
                 </div>
                 <div class="batch-summary" id="batch-summary"></div>
-
                 <div class="btn-row" style="margin-top:4px">
-                    <button class="btn btn-primary" id="batch-action-btn" onclick="runBatchEncrypt()">
-                        &#x1F512; Encrypt All &amp; Download ZIP
-                    </button>
+                    <button class="btn btn-primary" id="batch-action-btn" onclick="runBatchEncrypt()">&#x1F512; Encrypt All &amp; Download ZIP</button>
                 </div>
             </div>
         </div>
 
-        <!-- STATS TAB (hidden, rendered when security bar Stats button clicked) -->
         <div id="stats-mode" class="mode-content">
             <div id="stats-content"></div>
         </div>
     </div>
 
-    <!-- ─── SECURITY BAR ───────────────────── -->
     <div class="security-bar">
         <button class="btn btn-danger" onclick="wipeScreen()">&#x1F6D1; Panic Wipe</button>
         <button class="btn" style="border-color:var(--text-primary);color:var(--text-primary)" onclick="openLogs()">&#x1F441;&#xFE0F; View Logs</button>
@@ -267,12 +290,9 @@
         <button class="btn" style="border-color:var(--neon-cyan);color:var(--neon-cyan)" onclick="openStatsPanel()">&#x1F4CA; Stats</button>
     </div>
 
-</div><!-- /page-wrap -->
+</div>
 
 
-<!-- ═══════════════════════════════════════════
-     TOTP SETUP MODAL
-═══════════════════════════════════════════ -->
 <div id="totpModal" class="modal">
     <div class="modal-box" style="max-width:560px">
         <div class="modal-title">Two-Factor Authentication</div>
@@ -281,8 +301,7 @@
             <div class="totp-setup-grid">
                 <div>
                     <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.8">
-                        Scan the QR code with Google Authenticator, Authy, or any TOTP app.
-                        Each decrypt operation will require a 6-digit code.
+                        Scan the QR code with Google Authenticator, Authy, or any TOTP app. Each decrypt operation will require a 6-digit code.
                     </p>
                     <ul class="totp-steps">
                         <li>Install an authenticator app</li>
@@ -300,9 +319,7 @@
             </div>
             <hr class="spacer-line">
             <label>Verify Setup &mdash; Enter 6-Digit Code</label>
-            <input type="text" inputmode="numeric" id="totp-verify-input" class="totp-code-input"
-                   maxlength="6" placeholder="000000"
-                   oninput="this.value=this.value.replace(/\D/g,'')">
+            <input type="text" inputmode="numeric" id="totp-verify-input" class="totp-code-input" maxlength="6" placeholder="000000" oninput="this.value=this.value.replace(/\D/g,'')">
             <div class="totp-status" id="totp-setup-status"></div>
             <div class="modal-footer">
                 <button class="btn btn-primary btn-sm" onclick="verifyTOTPSetup()">&#x2713; Verify &amp; Enable</button>
@@ -313,9 +330,6 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     TOTP VERIFY MODAL
-═══════════════════════════════════════════ -->
 <div id="totpVerifyModal" class="modal">
     <div class="modal-box" style="max-width:360px">
         <div class="modal-title">Verify Identity</div>
@@ -323,14 +337,11 @@
             <div class="totp-timer-ring">
                 <svg width="60" height="60" viewBox="0 0 60 60">
                     <circle cx="30" cy="30" r="25" fill="none" stroke="rgba(0,243,255,0.1)" stroke-width="4"/>
-                    <circle id="totp-timer-path" cx="30" cy="30" r="25" fill="none"
-                            stroke="var(--neon-cyan)" stroke-width="4" stroke-linecap="round"/>
+                    <circle id="totp-timer-path" cx="30" cy="30" r="25" fill="none" stroke="var(--neon-cyan)" stroke-width="4" stroke-linecap="round"/>
                 </svg>
             </div>
             <p>Enter the 6-digit code from your authenticator app to proceed with decryption.</p>
-            <input type="text" inputmode="numeric" id="totp-verify-code" class="totp-code-input"
-                   maxlength="6" placeholder="000000"
-                   oninput="this.value=this.value.replace(/\D/g,''); if(this.value.length===6) submitTOTPVerify()">
+            <input type="text" inputmode="numeric" id="totp-verify-code" class="totp-code-input" maxlength="6" placeholder="000000" oninput="this.value=this.value.replace(/\D/g,''); if(this.value.length===6) submitTOTPVerify()">
             <div class="totp-status" id="totp-verify-status" style="color:var(--danger)"></div>
         </div>
         <div class="modal-footer" style="justify-content:center">
@@ -340,27 +351,15 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     THREAT MAP MODAL
-═══════════════════════════════════════════ -->
 <div id="threatModal" class="modal">
     <div class="modal-box" style="max-width:900px">
         <div class="modal-title">Live Threat Intelligence Map</div>
         <button class="modal-close" onclick="closeModal('threatModal')">&times;</button>
         <canvas id="threat-map-canvas"></canvas>
         <div class="map-stats">
-            <div class="map-stat">
-                <div class="map-stat-num" id="stat-total">0</div>
-                <div class="map-stat-label">Total Events</div>
-            </div>
-            <div class="map-stat">
-                <div class="map-stat-num" id="stat-fail" style="color:var(--danger)">0</div>
-                <div class="map-stat-label">Failed Decrypts</div>
-            </div>
-            <div class="map-stat">
-                <div class="map-stat-num" id="stat-countries">0</div>
-                <div class="map-stat-label">Unique Countries</div>
-            </div>
+            <div class="map-stat"><div class="map-stat-num" id="stat-total">0</div><div class="map-stat-label">Total Events</div></div>
+            <div class="map-stat"><div class="map-stat-num" id="stat-fail" style="color:var(--danger)">0</div><div class="map-stat-label">Failed Decrypts</div></div>
+            <div class="map-stat"><div class="map-stat-num" id="stat-countries">0</div><div class="map-stat-label">Unique Countries</div></div>
         </div>
         <div class="map-legend">
             <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div> Success</div>
@@ -376,9 +375,6 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     FORENSIC LOGS MODAL
-═══════════════════════════════════════════ -->
 <div id="logModal" class="modal">
     <div class="modal-box">
         <div class="modal-title">Forensic Audit Logs</div>
@@ -394,9 +390,6 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     HISTORY MODAL
-═══════════════════════════════════════════ -->
 <div id="historyModal" class="modal">
     <div class="modal-box">
         <div class="modal-title">Encryption History</div>
@@ -412,9 +405,6 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     AUTO-LOCK OVERLAY
-═══════════════════════════════════════════ -->
 <div id="lock-overlay">
     <div class="lock-countdown" id="lock-countdown"></div>
     <div class="lock-screen-icon">&#x1F512;</div>
@@ -424,31 +414,24 @@
     </div>
     <div class="lock-screen-timer" id="lock-timer-display"></div>
     <div class="lock-input-wrap">
-        <input type="password" id="lock-password-input" placeholder="Enter encryption key..."
-               onkeydown="if(event.key==='Enter') attemptUnlock()">
+        <input type="password" id="lock-password-input" placeholder="Enter encryption key..." onkeydown="if(event.key==='Enter') attemptUnlock()">
         <button class="lock-unlock-btn" onclick="attemptUnlock()">UNLOCK</button>
     </div>
     <div class="lock-error" id="lock-error"></div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     SHAREABLE LINK MODAL
-═══════════════════════════════════════════ -->
 <div id="shareModal" class="modal">
     <div class="modal-box" style="max-width:560px">
         <div class="modal-title">Shareable Encrypted Link</div>
         <button class="modal-close" onclick="closeModal('shareModal')">&times;</button>
         <p style="font-size:12px;color:var(--text-muted);line-height:1.8;margin-bottom:4px">
-            The ciphertext is embedded in the URL fragment (<code>#</code>). It never reaches any server — the recipient opens the link, enters the password, and decrypts entirely in their browser.
+            The ciphertext is embedded in the URL fragment (<code>#</code>). It never reaches any server.
         </p>
         <div class="share-link-box" id="share-link-content">Generating link...</div>
         <div id="share-file-section" style="display:none; margin-bottom:10px; padding:10px 12px; background:rgba(78,201,232,0.05); border:1px solid rgba(78,201,232,0.15); border-radius:4px; font-size:11px; color:var(--text-secondary)">
-            &#x1F4C4; Encrypted file: <strong id="share-file-name" style="color:var(--neon-cyan)"></strong><br>
-            <span style="color:var(--text-muted)">Recipient will auto-download the .enc file when opening the link.</span>
+            &#x1F4C4; Encrypted file: <strong id="share-file-name" style="color:var(--neon-cyan)"></strong>
         </div>
-        <div class="share-note">
-            <strong>&#x26A0; Important:</strong> The password is NOT included in the link. Share it separately via a different channel (phone call, Signal, etc.)
-        </div>
+        <div class="share-note"><strong>&#x26A0; Important:</strong> The password is NOT included in the link. Share it separately.</div>
         <div class="modal-footer">
             <button class="btn btn-primary btn-sm" onclick="copyShareLink()">&#x1F4CB; Copy Link</button>
             <button class="btn btn-sm" style="border-color:var(--text-muted);color:var(--text-muted)" onclick="closeModal('shareModal')">Close</button>
@@ -456,25 +439,21 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     LOCK SETTINGS MODAL
-═══════════════════════════════════════════ -->
 <div id="lockSettingsModal" class="modal">
     <div class="modal-box" style="max-width:420px">
         <div class="modal-title">Auto-Lock Settings</div>
         <button class="modal-close" onclick="closeModal('lockSettingsModal')">&times;</button>
         <p style="font-size:12px;color:var(--text-muted);line-height:1.8;margin-bottom:16px">
-            Set a PIN to automatically lock the vault after 5 minutes of inactivity. You will need to enter this PIN to resume. Leave blank to disable auto-lock.
+            Set a PIN to automatically lock the vault after 5 minutes of inactivity.
         </p>
         <div style="font-size:12px;letter-spacing:1px;margin-bottom:16px" id="lock-current-status"></div>
         <div class="input-group">
-            <label>New Lock PIN (min 4 characters, leave blank to disable)</label>
+            <label>New Lock PIN (min 4 characters)</label>
             <input type="password" id="lock-pin-input" placeholder="Enter PIN...">
         </div>
         <div class="input-group">
             <label>Confirm PIN</label>
-            <input type="password" id="lock-pin-confirm" placeholder="Confirm PIN..."
-                   onkeydown="if(event.key==='Enter') saveLockSettings()">
+            <input type="password" id="lock-pin-confirm" placeholder="Confirm PIN..." onkeydown="if(event.key==='Enter') saveLockSettings()">
         </div>
         <div style="font-size:11px;color:var(--danger);min-height:18px;letter-spacing:1px" id="lock-setup-error"></div>
         <div class="modal-footer">
@@ -485,9 +464,100 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     VAULT LOGIC
-═══════════════════════════════════════════ -->
+<div id="chatModal" class="modal">
+    <div class="modal-box" style="max-width:660px">
+        <div class="modal-title">&#x1F4AC; Encrypted Chat Room</div>
+        <button class="modal-close" onclick="closeModal('chatModal')">&times;</button>
+
+        <div class="chat-setup" id="chat-setup-section">
+            <p style="font-size:12px;color:var(--text-muted);line-height:1.8;margin-bottom:14px">
+                All messages are encrypted client-side with AES-256-GCM. No server ever sees plaintext.
+                Share the Room Code + Password with your contact via a separate channel.
+            </p>
+            <div class="chat-nickname-row">
+                <label style="margin-bottom:0;white-space:nowrap">Your Name</label>
+                <input type="text" id="chat-nickname" placeholder="e.g. Alice" maxlength="20" style="flex:1;padding:6px 10px;font-size:12px" autocomplete="off" data-1p-ignore>
+                <div style="font-size:10px;color:var(--text-muted);letter-spacing:1px;white-space:nowrap">Visible to room peers</div>
+            </div>
+            
+            <div class="chat-action-toggle" style="display:flex; gap:16px; margin-bottom:14px; font-size:12px; color:var(--text-secondary);">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                    <input type="radio" name="chat-action" value="create" checked> 
+                    <span style="color:var(--neon-cyan)">Create New Room</span>
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                    <input type="radio" name="chat-action" value="join"> 
+                    <span>Join Existing Room</span>
+                </label>
+            </div>
+
+            <div class="chat-room-row">
+                <div class="input-group">
+                    <label>Room Code</label>
+                    <input type="text" id="chat-room-id" placeholder="e.g. ALPHA-7" style="text-transform:uppercase" autocomplete="off" data-1p-ignore>
+                </div>
+                <div class="input-group">
+                    <label>Shared Password</label>
+                    <div class="key-input-wrap">
+                        <input type="password" id="chat-room-key" placeholder="Shared secret" autocomplete="new-password" data-1p-ignore onkeydown="if(event.key==='Enter') joinChatRoom()">
+                        <button class="eye-btn" type="button" onclick="toggleReveal('chat-room-key', this)" title="Show/hide">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
+                                <circle cx="10" cy="10" r="2.5"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="joinChatRoom()" style="flex:none;height:46px;padding:0 18px;align-self:flex-end;margin-bottom:0">Submit</button>
+            </div>
+        </div>
+
+        <div class="chat-e2e-banner" id="chat-e2e-banner" style="display:none; justify-content: space-between;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span class="status-dot" style="width:6px;height:6px;flex-shrink:0"></span>
+                END-TO-END ENCRYPTED &nbsp;&middot;&nbsp; ROOM: <strong id="chat-room-display"></strong> &nbsp;&middot;&nbsp; AES-256-GCM
+                <span class="chat-peer-badge" id="chat-peer-badge">1 peer</span>
+            </div>
+            <button class="btn btn-sm" onclick="copyRoomDetails()" style="padding: 2px 8px; font-size: 9px; border-color: var(--neon-cyan); color: var(--neon-cyan);" title="Copy Room & Password">📋 Copy Inv</button>
+        </div>
+
+        <div class="chat-status-bar" id="chat-status-bar">
+            <span id="chat-status-text">Not connected</span>
+            <span id="chat-my-nick" class="chat-nickname-badge" style="display:none" onclick="promptNickChange()" title="Click to rename"></span>
+        </div>
+
+        <div class="chat-window" id="chat-window">
+            <div class="chat-empty" id="chat-empty">
+                Join a room to start chatting.<br>
+                <span style="font-size:10px;opacity:0.5">Messages are encrypted before leaving your browser.</span>
+            </div>
+        </div>
+
+        <div id="chat-typing-row"></div>
+
+        <div class="chat-input-row">
+            <input type="text" id="chat-msg-input" placeholder="Type a message..." disabled
+                   oninput="onChatInput()"
+                   onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendChatMessage(); }">
+            <button class="btn btn-primary" onclick="sendChatMessage()" id="chat-send-btn" disabled>&#x2191; Send</button>
+        </div>
+
+        <div class="modal-footer" style="margin-top:12px">
+            <button class="btn btn-sm" style="border-color:var(--text-muted);color:var(--text-muted)" onclick="leaveChatRoom()">Leave Room</button>
+            <button class="btn btn-sm" style="border-color:var(--text-muted);color:var(--text-muted)" onclick="closeModal('chatModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="reaction-picker-popup" class="reaction-picker" style="display:none">
+    <button onclick="pickReaction('🔒')">🔒</button>
+    <button onclick="pickReaction('✅')">✅</button>
+    <button onclick="pickReaction('❌')">❌</button>
+    <button onclick="pickReaction('👀')">👀</button>
+    <button onclick="pickReaction('🔥')">🔥</button>
+    <button onclick="pickReaction('💡')">💡</button>
+</div>
+
 <script src="vault.js"></script>
 </body>
 </html>
