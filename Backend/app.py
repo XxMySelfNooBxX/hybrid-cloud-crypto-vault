@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, send_file
-from flask_sock import Sock
 import os, json, requests, sqlite3, io
 from datetime import datetime
 from PIL import Image
@@ -8,7 +7,6 @@ from cryptography.hazmat.backends import default_backend
 from google.cloud import kms
 
 app = Flask(__name__)
-sock = Sock(app)
 
 # ─── GCP KMS CONFIGURATION ──────────────────────────────────────
 PROJECT_ID   = "cloud-project-486813"
@@ -51,161 +49,6 @@ def _corsify(response, status=200):
     response.headers.add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE")
     response.status_code = status
     return response
-
-
-# ═══════════════════════════════════════════════════════════════
-#   WEBSOCKET CHAT — ROOM GATEKEEPER
-# ═══════════════════════════════════════════════════════════════
-ROOMS = {}
-
-def _broadcast(room_id, payload, exclude_peer=None):
-    if room_id not in ROOMS:
-        return
-    dead = []
-    for pid, peer in ROOMS[room_id].items():
-        if pid == exclude_peer:
-            continue
-        try:
-            peer['ws'].send(json.dumps(payload))
-        except Exception:
-            dead.append(pid)
-    for pid in dead:
-        _remove_peer(room_id, pid)
-
-def _remove_peer(room_id, peer_id):
-    if room_id not in ROOMS or peer_id not in ROOMS[room_id]:
-        return
-    nick = ROOMS[room_id][peer_id].get('nick', 'Unknown')
-    del ROOMS[room_id][peer_id]
-    if not ROOMS[room_id]:
-        del ROOMS[room_id]
-        return
-    _broadcast(room_id, {
-        'type':    'peer_left',
-        'peerId':  peer_id,
-        'nick':    nick,
-        'count':   len(ROOMS.get(room_id, {})),
-    })
-
-@sock.route('/ws')
-def websocket_handler(ws):
-    peer_id  = None
-    room_id  = None
-
-    try:
-        while True:
-            try:
-                raw = ws.receive()
-            except Exception:
-                break   
-
-            if raw is None:
-                break   
-
-            try:
-                frame = json.loads(raw)
-            except (ValueError, TypeError):
-                continue
-
-            ftype = frame.get('type')
-
-            # ── 1. CREATE ROOM ────────────────────────────────
-            if ftype == 'create':
-                room_id  = str(frame.get('room',  '')).upper().strip()
-                peer_id  = str(frame.get('peerId',''))
-                nick     = str(frame.get('nick',  'Anonymous'))[:30]
-
-                if not room_id or not peer_id:
-                    ws.send(json.dumps({'type': 'error', 'msg': 'Missing room or peerId'}))
-                    continue
-
-                if room_id in ROOMS:
-                    ws.send(json.dumps({'type': 'error', 'msg': f'Server "{room_id}" already exists. Please choose another name.'}))
-                    continue
-
-                ROOMS[room_id] = {}
-                ROOMS[room_id][peer_id] = {'ws': ws, 'nick': nick}
-
-                ws.send(json.dumps({'type': 'joined', 'room': room_id, 'count': 1}))
-
-
-            # ── 2. JOIN EXISTING ROOM ─────────────────────────
-            elif ftype == 'join':
-                room_id  = str(frame.get('room',  '')).upper().strip()
-                peer_id  = str(frame.get('peerId',''))
-                nick     = str(frame.get('nick',  'Anonymous'))[:30]
-
-                if room_id not in ROOMS:
-                    ws.send(json.dumps({'type': 'error', 'msg': f'Server "{room_id}" does not exist. Check the code or create it first.'}))
-                    continue
-
-                ROOMS[room_id][peer_id] = {'ws': ws, 'nick': nick}
-
-                ws.send(json.dumps({'type': 'joined', 'room': room_id, 'count': len(ROOMS[room_id])}))
-
-                _broadcast(room_id, {
-                    'type':   'peer_joined',
-                    'peerId': peer_id,
-                    'nick':   nick,
-                    'count':  len(ROOMS[room_id]),
-                }, exclude_peer=peer_id)
-
-            # ── 3. CHAT MESSAGE ───────────────────────────────
-            elif ftype == 'msg':
-                if not room_id: continue
-                _broadcast(room_id, {
-                    'type':   'msg',
-                    'msgId':  frame.get('msgId'),
-                    'cipher': frame.get('cipher'),
-                    'nick':   frame.get('nick', ''),
-                    'peerId': peer_id,
-                    'ts':     frame.get('ts'),
-                }, exclude_peer=peer_id)
-
-            # ── 4. TYPING SIGNAL ──────────────────────────────
-            elif ftype == 'typing':
-                if not room_id: continue
-                _broadcast(room_id, {
-                    'type':   'typing',
-                    'peerId': peer_id,
-                    'nick':   frame.get('nick', ''),
-                    'active': frame.get('active', False),
-                }, exclude_peer=peer_id)
-
-            # ── 5. READ RECEIPT ───────────────────────────────
-            elif ftype == 'read':
-                if not room_id: continue
-                _broadcast(room_id, {
-                    'type':   'read',
-                    'msgId':  frame.get('msgId'),
-                    'reader': peer_id,
-                    'nick':   frame.get('nick', ''),
-                }, exclude_peer=peer_id)
-
-            # ── 6. REACTION ───────────────────────────────────
-            elif ftype == 'react':
-                if not room_id: continue
-                _broadcast(room_id, {
-                    'type':   'react',
-                    'msgId':  frame.get('msgId'),
-                    'emoji':  frame.get('emoji', ''),
-                    'peerId': peer_id,
-                    'nick':   frame.get('nick', ''),
-                    'remove': frame.get('remove', False),
-                }, exclude_peer=peer_id)
-
-            # ── 7. PEER COUNT ─────────────────────────────────
-            elif ftype == 'ping':
-                if room_id and room_id in ROOMS:
-                    ws.send(json.dumps({
-                        'type':  'peer_count',
-                        'count': len(ROOMS[room_id]),
-                    }))
-
-    finally:
-        if peer_id and room_id:
-            _remove_peer(room_id, peer_id)
-
 
 # ─── TEXT ENCRYPTION ──────────────────────────────────────────
 @app.route('/', methods=['GET', 'POST', 'OPTIONS'])

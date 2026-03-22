@@ -1,12 +1,14 @@
 const BACKEND = "https://cloud-project-486813.el.r.appspot.com/";
 
 /* ===============================================================
-   CONSTELLATION BACKGROUND
+   CONSTELLATION BACKGROUND WITH PARALLAX MOUSE TRACKING
 =============================================================== */
 (function initConstellation() {
     const canvas = document.getElementById('constellation-canvas');
     const ctx = canvas.getContext('2d');
     let W, H, nodes, mouse = { x: -9999, y: -9999 };
+    
+    let targetPx = 0, targetPy = 0, curPx = 0, curPy = 0;
 
     const NODE_COUNT  = 120;
     const LINK_DIST   = 140;
@@ -36,14 +38,28 @@ const BACKEND = "https://cloud-project-486813.el.r.appspot.com/";
     function init() { resize(); nodes = Array.from({ length: NODE_COUNT }, makeNode); }
 
     window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-    window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+    window.addEventListener('mousemove', e => { 
+        mouse.x = e.clientX; 
+        mouse.y = e.clientY; 
+        targetPx = (e.clientX - W/2) * 0.03;
+        targetPy = (e.clientY - H/2) * 0.03;
+    });
+    window.addEventListener('mouseleave', () => { 
+        mouse.x = -9999; 
+        mouse.y = -9999; 
+        targetPx = 0; 
+        targetPy = 0;
+    });
 
     const COLORS = { c: '78,201,232', p: '123,104,238', w: '200,232,240' };
 
     function draw() {
         const isLight = document.body.classList.contains('light-theme');
         ctx.clearRect(0, 0, W, H);
+        
+        curPx += (targetPx - curPx) * 0.05;
+        curPy += (targetPy - curPy) * 0.05;
+
         for (let i = 0; i < nodes.length; i++) {
             const n = nodes[i];
             n.driftAngle += n.driftSpeed;
@@ -65,6 +81,7 @@ const BACKEND = "https://cloud-project-486813.el.r.appspot.com/";
             if (n.y < -20) n.y = H + 20;
             if (n.y > H+20) n.y = -20;
         }
+        
         for (let i = 0; i < nodes.length; i++) {
             for (let j = i + 1; j < nodes.length; j++) {
                 const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
@@ -72,22 +89,27 @@ const BACKEND = "https://cloud-project-486813.el.r.appspot.com/";
                 if (d2 < LINK_DIST2) {
                     const alpha = (1 - d2 / LINK_DIST2) * (isLight ? 0.18 : 0.32);
                     ctx.beginPath();
-                    ctx.moveTo(nodes[i].x, nodes[i].y);
-                    ctx.lineTo(nodes[j].x, nodes[j].y);
+                    const avgR = (nodes[i].r + nodes[j].r) / 2;
+                    ctx.moveTo(nodes[i].x - curPx * avgR, nodes[i].y - curPy * avgR);
+                    ctx.lineTo(nodes[j].x - curPx * avgR, nodes[j].y - curPy * avgR);
                     ctx.strokeStyle = `rgba(78,201,232,${alpha})`;
                     ctx.lineWidth = 0.6; ctx.stroke();
                 }
             }
         }
+        
         for (let i = 0; i < nodes.length; i++) {
             const n = nodes[i];
             const col = COLORS[n.type];
-            const glow = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r * 4);
+            const drawX = n.x - curPx * n.r;
+            const drawY = n.y - curPy * n.r;
+            
+            const glow = ctx.createRadialGradient(drawX, drawY, 0, drawX, drawY, n.r * 4);
             glow.addColorStop(0, `rgba(${col},${isLight ? 0.45 : 0.85})`);
             glow.addColorStop(1, `rgba(${col},0)`);
-            ctx.beginPath(); ctx.arc(n.x, n.y, n.r * 4, 0, Math.PI * 2);
+            ctx.beginPath(); ctx.arc(drawX, drawY, n.r * 4, 0, Math.PI * 2);
             ctx.fillStyle = glow; ctx.fill();
-            ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+            ctx.beginPath(); ctx.arc(drawX, drawY, n.r, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(${col},${isLight ? 0.55 : 1})`; ctx.fill();
         }
         requestAnimationFrame(draw);
@@ -95,11 +117,46 @@ const BACKEND = "https://cloud-project-486813.el.r.appspot.com/";
     init(); draw();
 })();
 
+/* ===============================================================
+   3D TILT EFFECT (GSAP)
+=============================================================== */
+function init3DTiltEffect(selector) {
+    const el = document.querySelector(selector);
+    if (!el || !window.gsap) return;
+    
+    el.addEventListener('mousemove', e => {
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const xPct = (x / rect.width) - 0.5;
+        const yPct = (y / rect.height) - 0.5;
+        
+        gsap.to(el, { 
+            rotationY: xPct * 8, 
+            rotationX: -yPct * 8, 
+            transformPerspective: 1000, 
+            duration: 0.4, 
+            ease: "power2.out" 
+        });
+    });
+    
+    el.addEventListener('mouseleave', () => {
+        gsap.to(el, { 
+            rotationY: 0, 
+            rotationX: 0, 
+            duration: 0.8, 
+            ease: "power3.out" 
+        });
+    });
+}
+document.addEventListener("DOMContentLoaded", () => {
+    init3DTiltEffect('#text-mode');
+    init3DTiltEffect('#file-mode');
+});
 
 /* ===============================================================
    HUD SCAN OVERLAY
 =============================================================== */
-let hudTimeout;
 function showHUD(msg = 'Processing...') {
     document.getElementById('hud-status-text').textContent = msg;
     document.getElementById('hud-overlay').classList.add('active');
@@ -107,7 +164,6 @@ function showHUD(msg = 'Processing...') {
 function hideHUD() {
     document.getElementById('hud-overlay').classList.remove('active');
 }
-
 
 /* ===============================================================
    GSAP MICRO-ANIMATIONS
@@ -137,9 +193,8 @@ function animateModalOpen(id) {
     gsap.fromTo(`#${id} .modal-box`, { scale: 0.94, opacity: 0, y: 20 }, { scale: 1, opacity: 1, y: 0, duration: 0.3, ease: 'back.out(1.5)' });
 }
 
-
 /* ===============================================================
-   THEME TOGGLE — with animated flash transition
+   THEME TOGGLE
 =============================================================== */
 function toggleTheme() {
     const isCurrentlyLight = document.body.classList.contains('light-theme');
@@ -163,9 +218,8 @@ function toggleTheme() {
     }
 })();
 
-
 /* ===============================================================
-   INLINE KEY REVEAL — eye-icon toggle
+   INLINE KEY REVEAL
 =============================================================== */
 function toggleReveal(inputId, btn) {
     const input = document.getElementById(inputId);
@@ -188,7 +242,6 @@ function toggleReveal(inputId, btn) {
         btn.title = 'Show key';
     }
 }
-
 
 /* ===============================================================
    KEY DERIVATION DISPLAY
@@ -231,7 +284,6 @@ function updateKDF(password, panelId) {
     }
 }
 
-
 /* ===============================================================
    STRENGTH METER
 =============================================================== */
@@ -255,7 +307,6 @@ function checkStrength(pw, fillId, timeId) {
     label.style.color = color;
     label.textContent = 'Crack: ' + time;
 }
-
 
 /* ===============================================================
    OUTPUT CIPHERTEXT FORMATTER
@@ -299,7 +350,6 @@ function animateOutputRevealFormatted(text, elId) {
         animateOutputReveal(text, elId);
     }
 }
-
 
 /* ===============================================================
    TOTP — RFC 6238 IMPLEMENTATION
@@ -453,6 +503,52 @@ function cancelTOTPVerify() {
     document.getElementById('totpVerifyModal').classList.remove('open');
 }
 
+/* ── KMS SIMULATOR LOGIC ── */
+function createKMSOverlay() {
+    const div = document.createElement('div');
+    div.id = 'kms-sim-overlay';
+    div.innerHTML = `
+        <div class="kms-node"><div class="kms-icon">☁️</div><div class="kms-label">GCP KMS (asia-south1)</div></div>
+        <div class="kms-track"><div class="kms-packet" id="kms-packet"></div></div>
+        <div class="kms-node"><div class="kms-icon">💻</div><div class="kms-label" style="color:var(--text-muted)">Browser Memory</div></div>
+        <div class="kms-status-text" id="kms-status-text">INITIALIZING...</div>
+    `;
+    document.body.appendChild(div);
+}
+createKMSOverlay();
+
+function simulateKMSHandshake(mode) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('kms-sim-overlay');
+        const packet = document.getElementById('kms-packet');
+        const text = document.getElementById('kms-status-text');
+        overlay.style.display = 'flex';
+        
+        if (window.gsap) {
+            gsap.set(packet, { y: 0, background: 'var(--neon-pink)', boxShadow: '0 0 15px var(--neon-pink)' });
+            
+            const tl = gsap.timeline({ onComplete: () => {
+                setTimeout(() => { overlay.style.display = 'none'; resolve(); }, 400);
+            }});
+
+            const action = mode === 'encrypt' ? 'ENCRYPT' : 'DECRYPT';
+            
+            tl.call(() => text.textContent = `1. REQUESTING DEK ${action} FROM MASTER KEY...`)
+              .to(packet, { y: -120, duration: 0.8, ease: "power2.inOut" })
+              .call(() => {
+                  text.textContent = `2. GCP KMS: PERFORMING HARDWARE AES-256 OP...`;
+                  packet.style.background = 'var(--neon-cyan)';
+                  packet.style.boxShadow = '0 0 15px var(--neon-cyan)';
+              })
+              .to(packet, { scale: 1.5, duration: 0.2, yoyo: true, repeat: 1 })
+              .call(() => text.textContent = `3. RETURNING PAYLOAD TO BROWSER...`)
+              .to(packet, { y: 0, duration: 0.8, ease: "power2.inOut" })
+              .call(() => text.textContent = `HANDSHAKE COMPLETE. SECURING DATA.`);
+        } else {
+            setTimeout(() => { overlay.style.display = 'none'; resolve(); }, 1500);
+        }
+    });
+}
 
 /* ===============================================================
    TEXT ENCRYPT / DECRYPT
@@ -483,6 +579,8 @@ async function _doProcessText(mode, msg, key) {
     document.getElementById('qr-container').style.display = 'none';
 
     try {
+        await simulateKMSHandshake(mode);
+
         const res  = await fetch(BACKEND, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -508,7 +606,6 @@ async function _doProcessText(mode, msg, key) {
         out.style.color = 'var(--danger)';
     }
 }
-
 
 /* ===============================================================
    FILE ENCRYPT / DECRYPT
@@ -539,6 +636,8 @@ async function _doProcessFile(mode, fileInput, key) {
     formData.append('format', format);
 
     try {
+        await simulateKMSHandshake(mode);
+
         const res = await fetch(BACKEND + 'file', { method: 'POST', body: formData });
         hideHUD();
         if (res.ok) {
@@ -571,26 +670,36 @@ async function _doProcessFile(mode, fileInput, key) {
     }
 }
 
-
 /* ===============================================================
-   ENCRYPTED CHAT — REAL WEBSOCKET IMPLEMENTATION
+   ENCRYPTED CHAT — FIREBASE SERVERLESS IMPLEMENTATION
 =============================================================== */
-const WS_URL = BACKEND.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws';
+const firebaseConfig = {
+    apiKey: "AIzaSyC5ycgz6oNSzXF7DI-AifMEJnHPFpGf1ho",
+    authDomain: "cloud-project-486813.firebaseapp.com",
+    databaseURL: "https://cloud-project-486813-default-rtdb.firebaseio.com",
+    projectId: "cloud-project-486813",
+    storageBucket: "cloud-project-486813.firebasestorage.app",
+    messagingSenderId: "214173355980",
+    appId: "1:214173355980:web:684bf3535ffdb8af611769"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
 
 const CHAT_STATE = {
     roomId:         null,
-    action:         null,    // 'create' or 'join'
+    action:         null,
     cryptoKey:      null,
     myId:           null,
     myNick:         'You',
-    ws:             null,
-    wsReady:        false,
+    isReady:        false,
     typingTimeout:  null,
     typingPeers:    {},
     seenMsgIds:     new Set(),
-    reactions:      {},
-    reconnectTimer: null,
-    peerCount:      1,
+    roomRef:        null,
+    myPeerRef:      null
 };
 
 /* ── OPEN MODAL ───────────────────────────── */
@@ -603,210 +712,212 @@ function openEncryptedChat() {
 
 /* ── JOIN/CREATE ROOM ─────────────────────── */
 async function joinChatRoom() {
-    const roomIdRaw = document.getElementById('chat-room-id').value.trim().toUpperCase();
-    const password  = document.getElementById('chat-room-key').value;
-    const nickInput = document.getElementById('chat-nickname').value.trim();
-    const action    = document.querySelector('input[name="chat-action"]:checked').value;
-
-    if (!roomIdRaw || !password) { alert('Room code and password required.'); return; }
-
-    CHAT_STATE.action = action;
-    CHAT_STATE.myNick = nickInput || ('Peer-' + Math.random().toString(36).slice(2,5).toUpperCase());
-    localStorage.setItem('vault-chat-nick', CHAT_STATE.myNick);
-
-    const enc         = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-    const salt        = enc.encode(roomIdRaw.padEnd(16,'0').slice(0,16));
-    CHAT_STATE.cryptoKey = await crypto.subtle.deriveKey(
-        { name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' },
-        keyMaterial,
-        { name:'AES-GCM', length:256 },
-        false, ['encrypt','decrypt']
-    );
-
-    CHAT_STATE.roomId      = roomIdRaw;
-    CHAT_STATE.myId        = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    CHAT_STATE.seenMsgIds  = new Set();
-    CHAT_STATE.reactions   = {};
-    CHAT_STATE.typingPeers = {};
-
-    _chatSetStatus('Connecting…', false);
-    _wsConnect();
-}
-
-/* ── WEBSOCKET CONNECTION ─────────────────── */
-function _wsConnect() {
-    if (CHAT_STATE.ws) {
-        try { CHAT_STATE.ws.close(); } catch(e) {}
-    }
-
-    const ws = new WebSocket(WS_URL);
-    CHAT_STATE.ws = ws;
-
-    ws.onopen = () => {
-        CHAT_STATE.wsReady = true;
-        clearTimeout(CHAT_STATE.reconnectTimer);
-        // Send specific action: 'create' or 'join'
-        _wsSend({ type: CHAT_STATE.action, room: CHAT_STATE.roomId, peerId: CHAT_STATE.myId, nick: CHAT_STATE.myNick });
-    };
-
-    ws.onmessage = (event) => {
-        let frame;
-        try { frame = JSON.parse(event.data); } catch(e) { return; }
-        _handleFrame(frame);
-    };
-
-    ws.onclose = () => {
-        CHAT_STATE.wsReady = false;
-        if (!CHAT_STATE.roomId) return; 
-        _chatSetStatus('Connection lost — reconnecting…', false);
-        CHAT_STATE.reconnectTimer = setTimeout(_wsConnect, 2000);
-    };
-
-    ws.onerror = () => {
-        _chatSetStatus('WebSocket error — retrying…', false);
-    };
-}
-
-function _wsSend(payload) {
-    if (CHAT_STATE.ws && CHAT_STATE.wsReady && CHAT_STATE.ws.readyState === WebSocket.OPEN) {
-        CHAT_STATE.ws.send(JSON.stringify(payload));
-    }
-}
-
-/* ── INCOMING FRAME HANDLER ───────────────── */
-async function _handleFrame(frame) {
-    switch (frame.type) {
-
-        case 'error':
-            alert("⚠️ " + frame.msg);
-            leaveChatRoom();
-            break;
-
-        case 'joined':
-            _chatConnected(frame.count);
-            break;
-
-        case 'peer_joined':
-            _updatePeerBadge(frame.count);
-            _renderSystemMsg(`${escapeHtml(frame.nick || 'A peer')} joined the room`, 'join');
-            break;
-
-        case 'peer_left':
-            _updatePeerBadge(frame.count);
-            _renderSystemMsg(`${escapeHtml(frame.nick || 'A peer')} left the room`, 'leave');
-            _clearTypingPeer(frame.peerId);
-            break;
-
-        case 'peer_count':
-            _updatePeerBadge(frame.count);
-            break;
-
-        case 'msg': {
-            if (CHAT_STATE.seenMsgIds.has(frame.msgId)) break;
-            CHAT_STATE.seenMsgIds.add(frame.msgId);
-            const plaintext = await chatDecrypt(frame.cipher);
-            if (plaintext !== null) {
-                renderChatMessage(
-                    { id: frame.msgId, nick: frame.nick, peerId: frame.peerId, ts: frame.ts, cipher: frame.cipher },
-                    plaintext, false
-                );
-                _wsSend({ type:'read', room: CHAT_STATE.roomId, msgId: frame.msgId, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId });
-            } else {
-                renderChatMessage(
-                    { id: frame.msgId, nick: frame.nick, ts: frame.ts, cipher: frame.cipher },
-                    '[unable to decrypt — wrong password?]', false, true
-                );
-            }
-            break;
+    try {
+        if (!window.crypto || !window.crypto.subtle) {
+            alert("⚠️ ENCRYPTION ENGINE OFFLINE: You must access this site via HTTPS to use cryptography. Please add 'https://' to your URL bar.");
+            return;
         }
 
-        case 'typing':
-            if (frame.peerId === CHAT_STATE.myId) break;
-            if (frame.active) {
-                _showTypingPeer(frame.peerId, frame.nick);
-            } else {
-                _clearTypingPeer(frame.peerId);
-            }
-            break;
+        const roomIdRaw = document.getElementById('chat-room-id').value.trim().toUpperCase();
+        const password  = document.getElementById('chat-room-key').value;
+        const nickInput = document.getElementById('chat-nickname').value.trim();
+        const action    = document.querySelector('input[name="chat-action"]:checked').value;
 
-        case 'read': {
+        if (!roomIdRaw || !password) { alert('Room code and password required.'); return; }
+
+        CHAT_STATE.action = action;
+        CHAT_STATE.myNick = nickInput || ('Peer-' + Math.random().toString(36).slice(2,5).toUpperCase());
+        localStorage.setItem('vault-chat-nick', CHAT_STATE.myNick);
+
+        const enc         = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+        const salt        = enc.encode(roomIdRaw.padEnd(16,'0').slice(0,16));
+        CHAT_STATE.cryptoKey = await crypto.subtle.deriveKey(
+            { name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' },
+            keyMaterial,
+            { name:'AES-GCM', length:256 },
+            false, ['encrypt','decrypt']
+        );
+
+        CHAT_STATE.roomId      = roomIdRaw;
+        CHAT_STATE.myId        = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+        CHAT_STATE.seenMsgIds  = new Set();
+        CHAT_STATE.typingPeers = {};
+
+        _chatSetStatus('Connecting to Firebase Node...', false);
+        _fbConnect();
+
+    } catch (error) {
+        alert("❌ CHAT CRASHED: " + error.message);
+        console.error("Chat Init Error:", error);
+    }
+}
+
+/* ── FIREBASE CONNECTION ─────────────────── */
+function _fbConnect() {
+    CHAT_STATE.roomRef = db.ref('vault_rooms/' + CHAT_STATE.roomId);
+    CHAT_STATE.myPeerRef = CHAT_STATE.roomRef.child('peers/' + CHAT_STATE.myId);
+
+    if (CHAT_STATE.action === 'create') {
+        CHAT_STATE.roomRef.child('meta').once('value', snap => {
+            if (snap.exists()) {
+                alert(`⚠️ Room "${CHAT_STATE.roomId}" already exists. Please select 'Join Existing Room'.`);
+                leaveChatRoom();
+            } else {
+                CHAT_STATE.roomRef.child('meta').set({ created: Date.now() });
+                _finalizeJoin();
+            }
+        });
+    } else {
+        CHAT_STATE.roomRef.child('meta').once('value', snap => {
+            if (!snap.exists()) {
+                alert(`⚠️ Room "${CHAT_STATE.roomId}" does not exist. Please create it first.`);
+                leaveChatRoom();
+            } else {
+                _finalizeJoin();
+            }
+        });
+    }
+}
+
+function _finalizeJoin() {
+    // Automatic DB cleanup when user closes tab
+    CHAT_STATE.myPeerRef.onDisconnect().remove();
+    CHAT_STATE.roomRef.child('typing/' + CHAT_STATE.myId).onDisconnect().remove();
+    
+    CHAT_STATE.myPeerRef.set({ nick: CHAT_STATE.myNick, joined: Date.now() });
+    CHAT_STATE.isReady = true;
+
+    // Listen for total peer count
+    CHAT_STATE.roomRef.child('peers').on('value', snap => {
+        const peers = snap.val() || {};
+        _chatConnected(Object.keys(peers).length);
+    });
+
+    // --- NEW: Announce when a peer joins ---
+    CHAT_STATE.roomRef.child('peers').on('child_added', snap => {
+        const peer = snap.val();
+        const peerId = snap.key;
+        // Only announce OTHER people joining (your own join is handled separately)
+        if (peerId !== CHAT_STATE.myId) {
+            _renderSystemMsg(`${peer.nick || 'A peer'} joined the room`, 'join');
+        }
+    });
+
+    // --- NEW: Announce when a peer leaves ---
+    CHAT_STATE.roomRef.child('peers').on('child_removed', snap => {
+        const peer = snap.val();
+        const peerId = snap.key;
+        if (peerId !== CHAT_STATE.myId) {
+            _renderSystemMsg(`${peer.nick || 'A peer'} left the room`, 'leave');
+            _clearTypingPeer(peerId);
+        }
+    });
+
+    // Listen for messages
+    CHAT_STATE.roomRef.child('messages').on('child_added', async snap => {
+        const frame = snap.val();
+        if (CHAT_STATE.seenMsgIds.has(frame.msgId)) return;
+        CHAT_STATE.seenMsgIds.add(frame.msgId);
+        
+        const plaintext = await chatDecrypt(frame.cipher);
+        if (plaintext !== null) {
+            renderChatMessage(
+                { id: frame.msgId, nick: frame.nick, peerId: frame.peerId, ts: frame.ts, cipher: frame.cipher },
+                plaintext, false
+            );
+            // Send read receipt if not mine
+            if (frame.peerId !== CHAT_STATE.myId) {
+                CHAT_STATE.roomRef.child('messages/' + frame.msgId + '/reads/' + CHAT_STATE.myId).set(true);
+            }
+        } else {
+            renderChatMessage(
+                { id: frame.msgId, nick: frame.nick, ts: frame.ts, cipher: frame.cipher },
+                '[unable to decrypt — wrong password?]', false, true
+            );
+        }
+    });
+
+    // Listen for message updates (Read Receipts & Reactions)
+    CHAT_STATE.roomRef.child('messages').on('child_changed', snap => {
+        const frame = snap.val();
+        if (frame.peerId === CHAT_STATE.myId && frame.reads) {
             const statusEl = document.getElementById('status-' + frame.msgId);
             if (statusEl && statusEl.dataset.status !== 'read') {
                 statusEl.textContent = '✓✓';
                 statusEl.className = 'msg-status read';
-                statusEl.title = `Read by ${frame.nick || 'Peer'}`;
                 statusEl.dataset.status = 'read';
+                statusEl.title = 'Read by peer';
             }
-            break;
         }
+        if (frame.reactions) {
+            _renderReactionsFromFirebase(frame.msgId, frame.reactions);
+        }
+    });
 
-        case 'react': {
-            const { msgId, emoji, peerId, nick, remove } = frame;
-            if (!CHAT_STATE.reactions[msgId]) CHAT_STATE.reactions[msgId] = [];
-            const list = CHAT_STATE.reactions[msgId];
-            const idx = list.findIndex(r => r.peerId === peerId);
-            if (idx >= 0) list.splice(idx, 1);
-            if (!remove) list.push({ peerId, nick: nick || 'Peer', emoji });
-            _renderReactionsFor(msgId);
-            break;
-        }
-    }
+    // Listen for typing
+    CHAT_STATE.roomRef.child('typing').on('value', snap => {
+        const typing = snap.val() || {};
+        Object.keys(typing).forEach(pid => {
+            if (pid === CHAT_STATE.myId) return;
+            if (typing[pid].active) _showTypingPeer(pid, typing[pid].nick);
+            else _clearTypingPeer(pid);
+        });
+    });
 }
 
 /* ── UI STATE HELPERS ─────────────────────── */
-function _chatConnected(count) {
-    document.getElementById('chat-room-display').textContent = CHAT_STATE.roomId;
-    document.getElementById('chat-e2e-banner').style.display = 'flex';
-    _chatSetStatus('', true);
-    const nickBadge = document.getElementById('chat-my-nick');
-    nickBadge.textContent = CHAT_STATE.myNick;
-    nickBadge.style.display = '';
-    document.getElementById('chat-msg-input').disabled = false;
-    document.getElementById('chat-send-btn').disabled  = false;
-    document.getElementById('chat-window').innerHTML   = '';
-    
-    if (CHAT_STATE.action === 'create') {
-        _renderSystemMsg(`You created room ${CHAT_STATE.roomId} as ${CHAT_STATE.myNick}`);
-    } else {
-        _renderSystemMsg(`You joined as ${CHAT_STATE.myNick}`);
-    }
-    
-    _updatePeerBadge(count);
-    setTimeout(() => document.getElementById('chat-msg-input').focus(), 100);
-}
-
 function _chatSetStatus(msg, connected) {
     const el = document.getElementById('chat-status-text');
     if (connected) {
-        el.innerHTML = `<span class="status-dot" style="width:6px;height:6px"></span> Connected · ${CHAT_STATE.roomId}`;
+        el.innerHTML = `<span class="status-dot" style="width:6px;height:6px"></span> Connected via Firebase`;
     } else {
         el.textContent = msg || 'Not connected';
     }
 }
 
-function _updatePeerBadge(count) {
-    CHAT_STATE.peerCount = count || 1;
+function _chatConnected(count) {
+    document.getElementById('chat-room-display').textContent = CHAT_STATE.roomId;
+    document.getElementById('chat-e2e-banner').style.display = 'flex';
+    
+    const el = document.getElementById('chat-status-text');
+    el.innerHTML = `<span class="status-dot" style="width:6px;height:6px"></span> Connected via Firebase`;
+    
+    const nickBadge = document.getElementById('chat-my-nick');
+    nickBadge.textContent = CHAT_STATE.myNick;
+    nickBadge.style.display = '';
+    document.getElementById('chat-msg-input').disabled = false;
+    document.getElementById('chat-send-btn').disabled  = false;
+    
+    if (document.getElementById('chat-empty')) {
+        document.getElementById('chat-window').innerHTML = '';
+        if (CHAT_STATE.action === 'create') {
+            _renderSystemMsg(`You created room ${CHAT_STATE.roomId} as ${CHAT_STATE.myNick}`);
+        } else {
+            _renderSystemMsg(`You joined as ${CHAT_STATE.myNick}`);
+        }
+    }
+    
     const badge = document.getElementById('chat-peer-badge');
     if (badge) badge.textContent = count > 1 ? `${count} peers` : '1 peer (you)';
+    
+    setTimeout(() => document.getElementById('chat-msg-input').focus(), 100);
 }
 
 /* ── TYPING INDICATOR ─────────────────────── */
 function onChatInput() {
-    if (!CHAT_STATE.wsReady) return;
-    _wsSend({ type:'typing', room: CHAT_STATE.roomId, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId, active: true });
+    if (!CHAT_STATE.isReady) return;
+    CHAT_STATE.roomRef.child('typing/' + CHAT_STATE.myId).set({ nick: CHAT_STATE.myNick, active: true });
+    
     clearTimeout(CHAT_STATE.typingTimeout);
     CHAT_STATE.typingTimeout = setTimeout(() => {
-        _wsSend({ type:'typing', room: CHAT_STATE.roomId, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId, active: false });
+        if (CHAT_STATE.roomRef) CHAT_STATE.roomRef.child('typing/' + CHAT_STATE.myId).set({ active: false });
     }, 2500);
 }
 
 function _showTypingPeer(peerId, nick) {
     if (CHAT_STATE.typingPeers[peerId]) clearTimeout(CHAT_STATE.typingPeers[peerId].timer);
-    CHAT_STATE.typingPeers[peerId] = {
-        nick,
-        timer: setTimeout(() => _clearTypingPeer(peerId), 4000),
-    };
+    CHAT_STATE.typingPeers[peerId] = { nick, timer: setTimeout(() => _clearTypingPeer(peerId), 4000) };
     _refreshTypingRow();
 }
 
@@ -852,11 +963,11 @@ async function chatDecrypt(packed) {
 async function sendChatMessage() {
     const input = document.getElementById('chat-msg-input');
     const text  = input.value.trim();
-    if (!text || !CHAT_STATE.cryptoKey || !CHAT_STATE.wsReady) return;
+    if (!text || !CHAT_STATE.cryptoKey || !CHAT_STATE.isReady) return;
     input.value = '';
 
     clearTimeout(CHAT_STATE.typingTimeout);
-    _wsSend({ type:'typing', room: CHAT_STATE.roomId, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId, active: false });
+    CHAT_STATE.roomRef.child('typing/' + CHAT_STATE.myId).set({ active: false });
 
     const cipherPacked = await chatEncrypt(text);
     const msgId        = Date.now().toString(36) + '-' + CHAT_STATE.myId;
@@ -868,16 +979,20 @@ async function sendChatMessage() {
         text, true, false, 'sending'
     );
 
-    _wsSend({ type:'msg', room: CHAT_STATE.roomId, msgId, cipher: cipherPacked, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId, ts });
-
-    setTimeout(() => {
+    CHAT_STATE.roomRef.child('messages/' + msgId).set({
+        msgId: msgId,
+        cipher: cipherPacked,
+        nick: CHAT_STATE.myNick,
+        peerId: CHAT_STATE.myId,
+        ts: ts
+    }).then(() => {
         const statusEl = document.getElementById('status-' + msgId);
         if (statusEl && statusEl.dataset.status !== 'read') {
             statusEl.textContent = '✓';
             statusEl.className   = 'msg-status sent';
             statusEl.dataset.status = 'sent';
         }
-    }, 200);
+    });
 }
 
 /* ── REACTIONS ─────────────────────────────── */
@@ -899,29 +1014,24 @@ function _closePicker() {
 }
 
 function pickReaction(emoji) {
-    if (!_pickerMsgId || !CHAT_STATE.wsReady) { _closePicker(); return; }
+    if (!_pickerMsgId || !CHAT_STATE.isReady) { _closePicker(); return; }
     const msgId = _pickerMsgId;
     _closePicker();
 
-    const list    = CHAT_STATE.reactions[msgId] || [];
-    const myReact = list.find(r => r.peerId === CHAT_STATE.myId && r.emoji === emoji);
-    const remove  = !!myReact;
-
-    if (!CHAT_STATE.reactions[msgId]) CHAT_STATE.reactions[msgId] = [];
-    const filtered = CHAT_STATE.reactions[msgId].filter(r => r.peerId !== CHAT_STATE.myId);
-    if (!remove) filtered.push({ peerId: CHAT_STATE.myId, nick: CHAT_STATE.myNick, emoji });
-    CHAT_STATE.reactions[msgId] = filtered;
-    _renderReactionsFor(msgId);
-
-    _wsSend({ type:'react', room: CHAT_STATE.roomId, msgId, emoji, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId, remove });
+    CHAT_STATE.roomRef.child(`messages/${msgId}/reactions/${CHAT_STATE.myId}_${emoji.codePointAt(0)}`).once('value', snap => {
+        if (snap.exists()) {
+            snap.ref.remove(); 
+        } else {
+            snap.ref.set({ emoji: emoji, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId });
+        }
+    });
 }
 
-function _renderReactionsFor(msgId) {
+function _renderReactionsFromFirebase(msgId, reactionsObj) {
     const container = document.getElementById('reactions-' + msgId);
     if (!container) return;
-    const list = CHAT_STATE.reactions[msgId] || [];
     const counts = {};
-    list.forEach(r => {
+    Object.values(reactionsObj).forEach(r => {
         if (!counts[r.emoji]) counts[r.emoji] = { count:0, isMine:false, nicks:[] };
         counts[r.emoji].count++;
         counts[r.emoji].nicks.push(r.nick || 'Peer');
@@ -982,19 +1092,25 @@ function promptNickChange() {
     localStorage.setItem('vault-chat-nick', CHAT_STATE.myNick);
     document.getElementById('chat-my-nick').textContent = CHAT_STATE.myNick;
     _renderSystemMsg(`You renamed yourself: ${old} → ${CHAT_STATE.myNick}`);
-    _wsSend({ type:'ping', room: CHAT_STATE.roomId });
+    if (CHAT_STATE.isReady) CHAT_STATE.myPeerRef.update({ nick: CHAT_STATE.myNick });
 }
 
 /* ── LEAVE ROOM ───────────────────────────── */
 function leaveChatRoom() {
-    clearTimeout(CHAT_STATE.reconnectTimer);
     clearTimeout(CHAT_STATE.typingTimeout);
+    if (CHAT_STATE.roomRef && CHAT_STATE.myId) {
+        CHAT_STATE.myPeerRef.remove();
+        CHAT_STATE.roomRef.child('typing/' + CHAT_STATE.myId).remove();
+        CHAT_STATE.roomRef.off();
+        CHAT_STATE.roomRef.child('peers').off();
+        CHAT_STATE.roomRef.child('messages').off();
+        CHAT_STATE.roomRef.child('typing').off();
+    }
+    
     CHAT_STATE.roomId = null;  
-    if (CHAT_STATE.ws) { try { CHAT_STATE.ws.close(); } catch(e) {} CHAT_STATE.ws = null; }
-    CHAT_STATE.wsReady    = false;
+    CHAT_STATE.isReady    = false;
     CHAT_STATE.cryptoKey  = null;
     CHAT_STATE.seenMsgIds = new Set();
-    CHAT_STATE.reactions  = {};
     CHAT_STATE.typingPeers = {};
 
     document.getElementById('chat-msg-input').disabled = true;
@@ -1369,8 +1485,8 @@ function closeModal(id) {
     if (id === 'threatModal' && threatAnimFrame) { cancelAnimationFrame(threatAnimFrame); threatAnimFrame = null; }
     if (id === 'chatModal') {
         clearTimeout(CHAT_STATE.typingTimeout);
-        if (CHAT_STATE.wsReady && CHAT_STATE.roomId) {
-            _wsSend({ type:'typing', room: CHAT_STATE.roomId, nick: CHAT_STATE.myNick, peerId: CHAT_STATE.myId, active: false });
+        if (CHAT_STATE.roomRef && CHAT_STATE.myId) {
+            CHAT_STATE.roomRef.child('typing/' + CHAT_STATE.myId).set({ active: false });
         }
     }
 }
@@ -1396,53 +1512,92 @@ function handleFileSelect(input) { if (input.files.length) showFile(input.files[
 function showFile(name) { document.getElementById('drop-zone-file').textContent = '✓ ' + name; }
 
 /* ===============================================================
-   BRUTE FORCE SIMULATION
+   NEW DIGITAL LOCKPICK MATRIX (Brute Force Sim)
 =============================================================== */
 let bruteIv = null, bruteRunning = false;
 
 function startBruteForce() {
     const pw = document.getElementById('text-key').value;
     if (!pw) return alert('Enter a password first');
+    
     if (bruteRunning) closeBrute();
     bruteRunning = true;
+    
     const overlay = document.getElementById('brute-overlay');
     const consoleDiv = document.getElementById('brute-console');
-    const resultDiv  = document.getElementById('brute-result');
-    overlay.style.display = 'block';
-    consoleDiv.innerHTML = ''; resultDiv.innerHTML = ''; resultDiv.style.display = 'none';
+    const resultBox = document.getElementById('brute-result-box');
+    const iterSpan = document.getElementById('brute-iter');
+
+    overlay.style.display = 'flex'; 
+    consoleDiv.innerHTML = '';
+    resultBox.style.display = 'none';
+    resultBox.innerHTML = '';
+
     const hasUpper = /[A-Z]/.test(pw), hasDigit = /[0-9]/.test(pw), hasSpecial = /[^A-Za-z0-9]/.test(pw);
     const isWeak = pw.length < 8 || (!hasUpper && !hasDigit) || (!hasDigit && !hasSpecial);
-    const stopAt = isWeak ? 60 : 180;
+    
+    const stopAt = isWeak ? 80 : 200; 
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+
     let c = 0;
+    let lockedCount = 0;
+
     bruteIv = setInterval(() => {
         if (!bruteRunning) { clearInterval(bruteIv); bruteIv = null; return; }
-        const hex = Math.random().toString(16).substr(2, 8).toUpperCase();
-        const att = Math.random().toString(36).substr(2, 8);
+
+        if (isWeak && c > 10 && c % 8 === 0 && lockedCount < pw.length) lockedCount++;
+        if (!isWeak && c > 10 && c % 15 === 0 && lockedCount < Math.floor(pw.length / 2)) lockedCount++; 
+
+        let attemptStr = '';
+        for (let i = 0; i < pw.length; i++) {
+            if (i < lockedCount) attemptStr += `<span class="b-locked">${pw[i]}</span>`; 
+            else attemptStr += chars.charAt(Math.floor(Math.random() * chars.length)); 
+        }
+
+        const hexAddr = "0x" + Math.random().toString(16).substr(2, 4).toUpperCase();
+        const attemptId = "#" + String(c).padStart(4, '0');
+
+        const isFinalSuccess = isWeak && lockedCount === pw.length;
+        const resStatus = isFinalSuccess ? "<span style='color:var(--success)'>MATCH</span>" : "<span class='b-fail'>FAIL</span>";
+
         const line = document.createElement('div');
-        line.style.cssText = 'margin:1px 0;line-height:1.4';
-        line.innerHTML = `<span style="color:#1a4a1a">[0x${hex}]</span> TESTING: <span style="color:#44ff44">${att}</span>... <span style="color:#ff2222">DENIED</span>`;
+        line.className = 'brute-line';
+        line.innerHTML = `<span>${attemptId}</span><span>${hexAddr}</span><span>${resStatus}</span><span class="b-matrix">[ ${attemptStr} ]</span>`;
         consoleDiv.appendChild(line);
-        while (consoleDiv.children.length > 200) consoleDiv.removeChild(consoleDiv.firstChild);
-        consoleDiv.scrollTop = 999999; c++;
-        if (c >= stopAt) {
-            clearInterval(bruteIv); bruteIv = null; bruteRunning = false;
-            resultDiv.style.display = 'block';
+
+        while (consoleDiv.children.length > 50) consoleDiv.removeChild(consoleDiv.firstChild);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+
+        iterSpan.textContent = (c * 210000).toLocaleString(); 
+        c++;
+
+        if (isFinalSuccess || (!isWeak && c >= stopAt)) {
+            clearInterval(bruteIv); 
+            bruteIv = null; 
+            bruteRunning = false;
+            
+            resultBox.style.display = 'block';
             if (isWeak) {
-                resultDiv.innerHTML = `<div class="crack-success-msg">⚠️ PASSWORD CRACKED ⚠️<br><span style="font-size:16px;margin-top:8px;display:block">KEY: <strong>${pw}</strong></span><span style="font-size:14px">TIME: ${(pw.length * 0.05).toFixed(2)}s</span></div>`;
+                resultBox.innerHTML = `<div class="crack-success-msg">⚠️ PASSWORD COMPROMISED ⚠️<br><span style="font-size:16px;margin-top:8px;display:block">KEY ISOLATED: <strong>${pw}</strong></span><span style="font-size:14px;display:block;margin-top:6px;">TIME: ${(c * 0.04).toFixed(2)}s</span></div>`;
+                resultBox.style.background = 'rgba(57,255,20,0.1)';
+                resultBox.style.borderTopColor = 'var(--success)';
             } else {
-                resultDiv.innerHTML = `<div class="crack-fail-msg">🛡️ BRUTE FORCE FAILED 🛡️<br><span style="font-size:14px;margin-top:8px;display:block">ENCRYPTION TOO STRONG</span><span style="font-size:12px;opacity:0.7">EST. CRACK TIME: 4,000,000 YEARS</span></div>`;
+                resultBox.innerHTML = `<div class="crack-fail-msg">🛡️ BRUTE FORCE TERMINATED 🛡️<br><span style="font-size:14px;margin-top:8px;display:block;color:var(--text-muted);">KMS THROTTLE DETECTED / ENTROPY SECURE</span><span style="font-size:12px;opacity:0.7;display:block;margin-top:4px">EST. CRACK TIME: 4,000,000 YEARS</span></div>`;
+                resultBox.style.background = 'rgba(0,243,255,0.05)';
+                resultBox.style.borderTopColor = 'var(--neon-cyan)';
             }
         }
-    }, 25);
+    }, 40); 
 }
 
 function closeBrute() {
     clearInterval(bruteIv); bruteIv = null; bruteRunning = false;
     document.getElementById('brute-overlay').style.display = 'none';
     document.getElementById('brute-console').innerHTML = '';
-    document.getElementById('brute-result').innerHTML = '';
-    document.getElementById('brute-result').style.display = 'none';
+    document.getElementById('brute-result-box').innerHTML = '';
+    document.getElementById('brute-result-box').style.display = 'none';
 }
+
 
 /* ===============================================================
    BOOT SEQUENCE
@@ -1599,14 +1754,37 @@ function showToast(msg, duration = 3000) {
 }
 
 /* ===============================================================
-   TAB SWITCHING
+   TAB SWITCHING (Now uses smooth GSAP unfolding)
 =============================================================== */
 function switchTab(mode, el) {
-    document.querySelectorAll('.mode-content').forEach(e => e.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
-    document.getElementById(mode + '-mode').classList.add('active');
-    el.classList.add('active');
-    if (window.gsap) gsap.fromTo('#' + mode + '-mode', { opacity: 0, x: 10 }, { opacity: 1, x: 0, duration: 0.25, ease: 'power2.out' });
+    if (!window.gsap) {
+        document.querySelectorAll('.mode-content').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+        document.getElementById(mode + '-mode').classList.add('active');
+        el.classList.add('active');
+        return;
+    }
+
+    const oldTab = document.querySelector('.mode-content.active');
+    if (oldTab && oldTab.id !== mode + '-mode') {
+        gsap.to(oldTab, { 
+            opacity: 0, 
+            y: 10, 
+            duration: 0.2, 
+            onComplete: () => {
+                oldTab.classList.remove('active');
+                document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+                
+                const newTab = document.getElementById(mode + '-mode');
+                newTab.classList.add('active');
+                gsap.fromTo(newTab, 
+                    { opacity: 0, y: -10, scale: 0.98 }, 
+                    { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'power2.out' }
+                );
+            }
+        });
+    }
 }
 
 /* ===============================================================
@@ -1967,4 +2145,12 @@ function copyShareLink() {
     }, 3500);
 })();
 
-setInterval(fetchLogs, 5000);
+/* ===============================================================
+   SAFARI PASSWORD PROMPT KILLER
+=============================================================== */
+window.addEventListener('beforeunload', () => {
+    document.querySelectorAll('input[type="password"]').forEach(input => {
+        input.value = '';
+        input.type = 'text';
+    });
+});

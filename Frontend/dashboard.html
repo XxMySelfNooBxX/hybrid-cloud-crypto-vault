@@ -46,9 +46,32 @@
 </div>
 
 <div id="brute-overlay">
-    <div id="brute-console"></div>
-    <div id="brute-result"></div>
-    <button id="abort-btn" onclick="closeBrute()">&#9940; ABORT SEQUENCE</button>
+    <div class="brute-terminal">
+        <div class="brute-header">
+            <span>[LOG_DECRYPTION_VECTOR // KDF_ACTIVE]</span>
+            <span class="brute-close" onclick="closeBrute()">&times;</span>
+        </div>
+        <div class="brute-meta">
+            > TARGET: projects/asia-south1/.../master-key<br>
+            > ALGO: PBKDF2-HMAC-SHA256 // AES-256-GCM<br>
+            > STATUS: <span style="color:var(--warning)">ATTEMPTING CRYPTOGRAPHIC BREAK-IN</span>
+        </div>
+        <div class="brute-stats">
+            <span>ITERATIONS: <span id="brute-iter" style="color:var(--neon-cyan)">0</span></span>
+            <span>ENTROPY: <span id="brute-ent" style="color:var(--neon-cyan)">CALCULATING</span></span>
+        </div>
+        <div class="brute-body">
+            <div class="brute-labels">
+                <span>[ATTEMPT]</span>
+                <span>[ADDR]</span>
+                <span>[RESULT]</span>
+                <span>[DECRYPT_MATRIX]</span>
+            </div>
+            <div id="brute-console"></div>
+        </div>
+        <div id="brute-result-box"></div>
+        <button id="abort-btn" onclick="closeBrute()">&#9940; ABORT SEQUENCE</button>
+    </div>
 </div>
 
 <div class="page-wrap">
@@ -79,7 +102,7 @@
             <button class="tab" onclick="switchTab('file', this)">File Encryption</button>
         </div>
 
-        <div id="text-mode" class="mode-content active">
+        <div id="text-mode" class="mode-content active" style="perspective: 1000px;">
             <div class="input-group">
                 <label>Secure Data Input</label>
                 <textarea id="message" placeholder="Enter sensitive intelligence..."></textarea>
@@ -88,8 +111,7 @@
                 <label>Encryption Key</label>
                 <div class="key-row">
                     <div class="key-input-wrap">
-                        <input type="password" id="text-key" placeholder="Enter password..."
-                               oninput="checkStrength(this.value,'text-fill','text-time'); updateKDF(this.value,'text-kdf')">
+                        <input type="password" id="text-key" placeholder="Enter password..." autocomplete="new-password" data-1p-ignore oninput="checkStrength(this.value,'text-fill','text-time'); updateKDF(this.value,'text-kdf')">
                         <button class="eye-btn" type="button" onclick="toggleReveal('text-key', this)" title="Show/hide key">
                             <svg id="eye-text-key-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                                 <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
@@ -160,7 +182,7 @@
             </div>
         </div>
 
-        <div id="file-mode" class="mode-content">
+        <div id="file-mode" class="mode-content" style="perspective: 1000px;">
             <div class="file-sub-tabs">
                 <button class="file-sub-tab active" id="fsub-single" onclick="switchFileSub('single')">Single File</button>
                 <button class="file-sub-tab" id="fsub-batch" onclick="switchFileSub('batch')">Batch Encrypt</button>
@@ -188,8 +210,7 @@
                 <div class="input-group">
                     <label>Encryption Key</label>
                     <div class="key-input-wrap">
-                        <input type="password" id="file-key" placeholder="Enter password..."
-                               oninput="checkStrength(this.value,'file-fill','file-time'); updateKDF(this.value,'file-kdf')">
+                        <input type="password" id="file-key" placeholder="Enter password..." autocomplete="new-password" data-1p-ignore oninput="checkStrength(this.value,'file-fill','file-time'); updateKDF(this.value,'file-kdf')">
                         <button class="eye-btn" type="button" onclick="toggleReveal('file-key', this)" title="Show/hide key">
                             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                                 <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
@@ -259,7 +280,7 @@
                 <div class="input-group">
                     <label id="batch-key-label">Encryption Key (applied to all files)</label>
                     <div class="key-input-wrap">
-                        <input type="password" id="batch-key" placeholder="Enter password for all files...">
+                        <input type="password" id="batch-key" placeholder="Enter password for all files..." autocomplete="new-password" data-1p-ignore>
                         <button class="eye-btn" type="button" onclick="toggleReveal('batch-key', this)" title="Show/hide key">
                             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                                 <path d="M1 10s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
@@ -291,7 +312,6 @@
     </div>
 
 </div>
-
 
 <div id="totpModal" class="modal">
     <div class="modal-box" style="max-width:560px">
@@ -414,7 +434,7 @@
     </div>
     <div class="lock-screen-timer" id="lock-timer-display"></div>
     <div class="lock-input-wrap">
-        <input type="password" id="lock-password-input" placeholder="Enter encryption key..." onkeydown="if(event.key==='Enter') attemptUnlock()">
+        <input type="password" id="lock-password-input" placeholder="Enter encryption key..." autocomplete="new-password" data-1p-ignore onkeydown="if(event.key==='Enter') attemptUnlock()">
         <button class="lock-unlock-btn" onclick="attemptUnlock()">UNLOCK</button>
     </div>
     <div class="lock-error" id="lock-error"></div>
@@ -449,11 +469,11 @@
         <div style="font-size:12px;letter-spacing:1px;margin-bottom:16px" id="lock-current-status"></div>
         <div class="input-group">
             <label>New Lock PIN (min 4 characters)</label>
-            <input type="password" id="lock-pin-input" placeholder="Enter PIN...">
+            <input type="password" id="lock-pin-input" placeholder="Enter PIN..." autocomplete="new-password" data-1p-ignore>
         </div>
         <div class="input-group">
             <label>Confirm PIN</label>
-            <input type="password" id="lock-pin-confirm" placeholder="Confirm PIN..." onkeydown="if(event.key==='Enter') saveLockSettings()">
+            <input type="password" id="lock-pin-confirm" placeholder="Confirm PIN..." autocomplete="new-password" data-1p-ignore onkeydown="if(event.key==='Enter') saveLockSettings()">
         </div>
         <div style="font-size:11px;color:var(--danger);min-height:18px;letter-spacing:1px" id="lock-setup-error"></div>
         <div class="modal-footer">
@@ -557,7 +577,8 @@
     <button onclick="pickReaction('🔥')">🔥</button>
     <button onclick="pickReaction('💡')">💡</button>
 </div>
-
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <script src="vault.js"></script>
 </body>
 </html>
