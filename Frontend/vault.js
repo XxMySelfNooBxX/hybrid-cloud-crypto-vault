@@ -2007,17 +2007,10 @@ function handleZipSelect(files) {
     const zip = files.find(f => f.name.endsWith('.zip'));
     if (!zip) { showToast('Please select a .zip file from a previous batch encrypt'); return; }
     batchZipFile = zip;
-    if (!window.JSZip) { document.getElementById('batch-summary').textContent = 'JSZip not loaded.'; return; }
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const z = await JSZip.loadAsync(e.target.result);
-            const names = Object.keys(z.files).filter(n => !z.files[n].dir);
-            renderBatchList(names.map(n => { const entry = z.files[n]; return { name: n, size: entry._data ? entry._data.uncompressedSize : 0 }; }));
-            document.getElementById('batch-summary').textContent = `${names.length} encrypted file${names.length !== 1 ? 's' : ''} found in ZIP`;
-        } catch(err) { document.getElementById('batch-summary').textContent = 'Could not read ZIP: ' + err.message; }
-    };
-    reader.readAsArrayBuffer(zip);
+    const list = document.getElementById('batch-file-list');
+    list.innerHTML = '';
+    list.style.display = 'none';
+    document.getElementById('batch-summary').textContent = 'ZIP file selected — enter key to decrypt';
 }
 
 function renderBatchList(items) {

@@ -37,6 +37,7 @@ body.light-theme {
     --success: #008822;
     --danger: #cc0000;
     --warning: #cc6600;
+    background: linear-gradient(135deg, #e8eef8 0%, #f0f4fc 50%, #e4ecf7 100%);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -85,8 +86,25 @@ body {
     pointer-events: none;
     transition: opacity 0.4s ease;
 }
-body.light-theme #constellation-canvas { opacity: 0.35; }
+body.light-theme #constellation-canvas { opacity: 0; }
+body.light-theme::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 600px 500px at 10% 20%, rgba(99, 149, 255, 0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 400px at 90% 15%, rgba(139, 109, 255, 0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 700px 600px at 50% 90%, rgba(79, 172, 254, 0.14) 0%, transparent 70%);
+    animation: auroraShift 18s ease-in-out infinite alternate;
+}
 
+@keyframes auroraShift {
+    0%   { opacity: 1; transform: scale(1) translateY(0px); }
+    50%  { opacity: 0.85; transform: scale(1.04) translateY(-12px); }
+    100% { opacity: 1; transform: scale(1) translateY(0px); }
+}
 /* ============================================================
    BOOT SEQUENCE OVERLAY
 ============================================================ */
@@ -605,6 +623,10 @@ body.light-theme select option { background: #fff; }
     background: rgba(0,0,0,0.2);
     min-height: 70px;
 }
+body.light-theme .output-wrap {
+    background: rgba(220, 235, 255, 0.45);
+    border-color: rgba(0, 85, 204, 0.15);
+}
 #text-output {
     color: var(--text-muted);
     font-size: 13px;
@@ -694,7 +716,10 @@ body.light-theme select option { background: #fff; }
     border-radius: 4px;
     min-height: 50px;
 }
-
+body.light-theme #file-output {
+    background: rgba(220, 235, 255, 0.4);
+    border-color: rgba(0, 85, 204, 0.15);
+}
 /* ============================================================
    SECURITY CONTROLS BAR
 ============================================================ */
@@ -714,7 +739,9 @@ body.light-theme select option { background: #fff; }
     transition: background 0.4s ease, border-color 0.4s ease;
 }
 body.light-theme .security-bar {
-    background: rgba(240,245,255,0.95);
+    background: rgba(235, 242, 255, 0.97);
+    border-color: rgba(0, 85, 204, 0.12);
+    box-shadow: 0 2px 16px rgba(0, 85, 204, 0.06);
 }
 .security-bar .btn {
     flex: 1;
@@ -1158,9 +1185,8 @@ body.light-theme .modal-box { border-color: rgba(0,85,204,0.15); }
 body.light-theme .glitch-title { text-shadow: 0 0 15px rgba(0,85,204,0.3); }
 body.light-theme {
     background-image:
-        linear-gradient(rgba(0,85,204,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,85,204,0.04) 1px, transparent 1px);
-    background-size: 24px 24px;
+        radial-gradient(ellipse at 15% 15%, rgba(0, 85, 204, 0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 85%, rgba(80, 120, 220, 0.05) 0%, transparent 55%);
     background-attachment: fixed;
 }
 
