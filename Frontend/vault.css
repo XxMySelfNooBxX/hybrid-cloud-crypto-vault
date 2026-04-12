@@ -647,6 +647,11 @@ body.light-theme select option { background: #fff; }
     color: var(--neon-pink) !important;
     transition: all 0.2s !important;
 }
+#qr-btn.active {
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 10px rgba(0,255,255,0.5) !important;
+    color: var(--neon-cyan) !important;
+}
 #qr-btn:hover {
     background: rgba(123,104,238,0.08) !important;
     box-shadow: 0 0 18px rgba(123,104,238,0.4), 0 0 40px rgba(123,104,238,0.15) !important;

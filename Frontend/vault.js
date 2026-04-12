@@ -576,6 +576,8 @@ async function _doProcessText(mode, msg, key) {
     out.style.color = 'var(--text-muted)';
     if (metaEl) metaEl.style.display = 'none';
     document.getElementById('qr-container').style.display = 'none';
+    const qrBtn = document.getElementById('qr-btn');
+    if (qrBtn) qrBtn.classList.remove('active');
 
     try {
         await simulateKMSHandshake(mode);
@@ -1366,6 +1368,8 @@ async function wipeScreen() {
     out.style.color = 'var(--text-muted)';
     document.getElementById('cipher-meta-row').style.display = 'none';
     document.getElementById('qr-container').style.display = 'none';
+    const qrBtn = document.getElementById('qr-btn');
+    if (qrBtn) qrBtn.classList.remove('active');
     if (window.gsap) gsap.to('.page-wrap', { opacity: 0, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.in' });
     setTimeout(() => alert('SECURE WIPE EXECUTED'), 300);
 }
@@ -1446,14 +1450,30 @@ function legacyCopy(txt, onSuccess) {
     document.body.removeChild(ta);
 }
 
-function generateQR() {
+function toggleQRCode() {
+    const qrBox = document.getElementById('qr-container');
+    const qrBtn = document.getElementById('qr-btn');
+    const isOpen = qrBox.style.display === 'block';
+    if (isOpen) {
+        qrBox.style.display = 'none';
+        qrBtn.classList.toggle('active', false);
+        return;
+    }
+
     const el = document.getElementById('text-output');
     const txt = el.innerText.replace(/\s+/g,'').trim() || el.textContent.trim();
     const placeholders = ['Waiting for encryption...','Encrypting stream...','Decrypting stream...','System wiped.'];
-    if (!txt || placeholders.includes(txt)) { alert('Encrypt something first.'); return; }
-    const container = document.getElementById('qr-container');
+    if (!txt || placeholders.includes(txt)) {
+        qrBox.style.display = 'none';
+        qrBtn.classList.toggle('active', false);
+        alert('Encrypt something first.');
+        return;
+    }
+
     const render = document.getElementById('qr-render');
-    render.innerHTML = ''; container.style.display = 'block';
+    render.innerHTML = '';
+    qrBox.style.display = 'block';
+    qrBtn.classList.toggle('active', true);
     if (window.QRCode) {
         new QRCode(render, { text: txt, width: 180, height: 180, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
     } else {
