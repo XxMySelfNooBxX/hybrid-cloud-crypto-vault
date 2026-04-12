@@ -1,5 +1,4 @@
-const BACKEND = "https://cloud-project-486813.el.r.appspot.com/";
-
+const BACKEND = "https://vault-dot-cloud-project-486813.el.r.appspot.com/";
 /* ===============================================================
    CONSTELLATION BACKGROUND WITH PARALLAX MOUSE TRACKING
 =============================================================== */
@@ -1249,7 +1248,7 @@ function drawThreatMap(logs) {
         const isFail = log.status.includes('FAIL') || log.status.includes('ERROR');
         const isPanic = log.action.includes('PURGE');
         row.className = 'threat-event ' + (isFail ? 'fail' : isPanic ? 'warn' : 'ok');
-        row.innerHTML = `<span>${log.time}</span><span>${log.action}</span><span>${log.location||'Unknown'}</span><span>${log.status}</span>`;
+        row.innerHTML = `<span>${formatLogTimestamp(log.time)}</span><span>${log.action}</span><span>${log.location||'Unknown'}</span><span>${log.status}</span>`;
         feed.appendChild(row);
     });
     threatPings = [];
@@ -1324,6 +1323,10 @@ async function refreshThreatMap() {
     drawThreatMap(logs);
 }
 
+function formatLogTimestamp(ts) {
+    return ts || 'Unknown';
+}
+
 /* ===============================================================
    LOGS
 =============================================================== */
@@ -1343,7 +1346,7 @@ async function fetchLogs() {
             const statusClass = l.status.includes('FAIL') || l.status.includes('ERROR') ? 'status-fail'
                 : l.status.includes('WIPE') ? 'status-panic'
                 : l.status.includes('ALERT') ? 'status-warn' : 'status-ok';
-            row.innerHTML = `<span style="color:var(--text-muted)">${l.time}</span><span>${l.ip}</span><span>${l.location || 'Unknown'}</span><span>${l.device || 'Unknown'}</span><span>${l.action}</span><span class="${statusClass}">${l.status}</span>`;
+            row.innerHTML = `<span style="color:var(--text-muted)">${formatLogTimestamp(l.time)}</span><span>${l.ip}</span><span>${l.location || 'Unknown'}</span><span>${l.device || 'Unknown'}</span><span>${l.action}</span><span class="${statusClass}">${l.status}</span>`;
             container.appendChild(row);
         });
     } catch(e) {}
@@ -1718,18 +1721,52 @@ function openLockSettings() {
     document.getElementById('lock-pin-input').value = '';
     document.getElementById('lock-pin-confirm').value = '';
     document.getElementById('lock-setup-error').textContent = '';
+
+    // Show/hide disable section based on lock state
+    const disableSection = document.getElementById('lock-disable-section');
+    const disableBtn     = document.getElementById('lock-disable-btn');
+    const pinLabel       = document.getElementById('lock-pin-label');
+    if (_lockEnabled) {
+        disableSection.style.display = 'block';
+        disableBtn.style.display     = '';
+        pinLabel.textContent         = 'Set New PIN (replaces current)';
+        document.getElementById('lock-current-pin').value = '';
+    } else {
+        disableSection.style.display = 'none';
+        disableBtn.style.display     = 'none';
+        pinLabel.textContent         = 'New Lock PIN (min 4 characters)';
+    }
 }
 
 async function saveLockSettings() {
     const pin     = document.getElementById('lock-pin-input').value;
     const confirm = document.getElementById('lock-pin-confirm').value;
     const errEl   = document.getElementById('lock-setup-error');
-    if (!pin) { disableAutoLock(); closeModal('lockSettingsModal'); return; }
+    if (!pin) { errEl.textContent = 'Enter a PIN to enable, or click Disable Lock.'; return; }
     if (pin.length < 4) { errEl.textContent = 'PIN must be at least 4 characters.'; return; }
     if (pin !== confirm) { errEl.textContent = '✕ PINs do not match.'; return; }
     const ok = await enableAutoLock(pin);
     if (ok) { closeModal('lockSettingsModal'); showToast('Auto-lock enabled — vault locks after 5 min inactivity'); }
 }
+
+async function confirmDisableAutoLock() {
+    const errEl  = document.getElementById('lock-setup-error');
+    const pinVal = document.getElementById('lock-current-pin').value;
+    if (!pinVal) {
+        errEl.textContent = '✕ Enter your current PIN in the red field to disable.';
+        return;
+    }
+    const inputHash = await hashKey(pinVal);
+    if (inputHash !== _lockHash) {
+        errEl.textContent = '✕ Wrong PIN — cannot disable lock.';
+        document.getElementById('lock-current-pin').value = '';
+        if (window.gsap) gsap.to('#lockSettingsModal .modal-box', { x: [-5,5,-4,4,0], duration: 0.3 });
+        return;
+    }
+    disableAutoLock();
+    closeModal('lockSettingsModal');
+}
+
 
 /* ===============================================================
    TOAST NOTIFICATION

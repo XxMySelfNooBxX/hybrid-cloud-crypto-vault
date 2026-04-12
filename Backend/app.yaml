@@ -1,3 +1,4 @@
+service: vault          # ← ADD THIS LINE
 runtime: python312
 instance_class: F1
 

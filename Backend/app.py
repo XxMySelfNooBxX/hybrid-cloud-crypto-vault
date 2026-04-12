@@ -1,12 +1,15 @@
 from flask import Flask, request, jsonify, send_file
-import os, json, requests, sqlite3, io
-from datetime import datetime
+import os, requests, sqlite3, io
+from datetime import datetime, timezone, timedelta
 from PIL import Image
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from google.cloud import kms
-
+import logging
 app = Flask(__name__)
+
+# ─── IST TIMEZONE ───────────────────────────────────────────────
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # ─── GCP KMS CONFIGURATION ──────────────────────────────────────
 PROJECT_ID   = "cloud-project-486813"
@@ -28,7 +31,11 @@ def init_db():
 init_db()
 
 def log_event(ip, action, status, user_agent):
-    time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    IST = timezone(timedelta(hours=5, minutes=30))
+    time_str = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S")
+    # Force-log to GCP Cloud Logging so we can see it
+    logging.warning(f"[VAULT] IST time_str={time_str} | UTC={datetime.now(timezone.utc).strftime('%H:%M:%S')}")
+
     device   = "Desktop/Laptop" if ("Windows" in user_agent or "Macintosh" in user_agent) else "Mobile/Unknown"
     location = "Unknown"
     if ip and ip != "127.0.0.1":
@@ -49,6 +56,13 @@ def _corsify(response, status=200):
     response.headers.add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE")
     response.status_code = status
     return response
+
+# ─── TZ DEBUG (remove after confirming fix) ───────────────────
+@app.route('/tz-test')
+def tz_test():
+    ist_time = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S")
+    utc_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    return jsonify({"ist": ist_time, "utc": utc_time, "offset": "+05:30"})
 
 # ─── TEXT ENCRYPTION ──────────────────────────────────────────
 @app.route('/', methods=['GET', 'POST', 'OPTIONS'])
@@ -189,7 +203,7 @@ def file_engine():
 def get_logs():
     if request.method == 'OPTIONS': return _corsify(jsonify({'status': 'ok'}))
 
-    ip           = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
+    ip            = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
     personal_only = request.args.get('personal', 'false').lower() == 'true'
 
     with sqlite3.connect(DB_PATH) as conn:
@@ -216,6 +230,7 @@ def panic_wipe():
 
     log_event(ip, "SYSTEM PURGE", "PANIC WIPE EXECUTED", user_agent)
     return _corsify(jsonify({"status": "Logs Wiped"}))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

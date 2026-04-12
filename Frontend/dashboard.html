@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="vault.css">
+   <link rel="stylesheet" href="vault.css?v=3">
 </head>
 <body>
 
@@ -467,18 +467,33 @@
             Set a PIN to automatically lock the vault after 5 minutes of inactivity.
         </p>
         <div style="font-size:12px;letter-spacing:1px;margin-bottom:16px" id="lock-current-status"></div>
-        <div class="input-group">
-            <label>New Lock PIN (min 4 characters)</label>
-            <input type="password" id="lock-pin-input" placeholder="Enter PIN..." autocomplete="new-password" data-1p-ignore>
+
+        <!-- SET NEW PIN SECTION -->
+        <div id="lock-set-section">
+            <div class="input-group">
+                <label id="lock-pin-label">New Lock PIN (min 4 characters)</label>
+                <input type="password" id="lock-pin-input" placeholder="Enter new PIN..." autocomplete="new-password" data-1p-ignore>
+            </div>
+            <div class="input-group">
+                <label>Confirm New PIN</label>
+                <input type="password" id="lock-pin-confirm" placeholder="Confirm new PIN..." autocomplete="new-password" data-1p-ignore onkeydown="if(event.key==='Enter') saveLockSettings()">
+            </div>
         </div>
-        <div class="input-group">
-            <label>Confirm PIN</label>
-            <input type="password" id="lock-pin-confirm" placeholder="Confirm PIN..." autocomplete="new-password" data-1p-ignore onkeydown="if(event.key==='Enter') saveLockSettings()">
+
+        <!-- DISABLE SECTION (only shown when lock is ON) -->
+        <div id="lock-disable-section" style="display:none; margin-top:4px; padding:12px; border:1px solid rgba(255,51,51,0.2); border-radius:4px; background:rgba(255,51,51,0.04)">
+            <div style="font-size:10px;letter-spacing:1.5px;color:var(--danger);margin-bottom:8px">
+                &#x26A0; TO DISABLE — VERIFY CURRENT PIN
+            </div>
+            <input type="password" id="lock-current-pin" placeholder="Enter current PIN to disable..." autocomplete="new-password" data-1p-ignore
+                style="width:100%;background:var(--input-bg);border:1px solid rgba(255,51,51,0.3);color:var(--text-primary);padding:11px 14px;font-family:'Share Tech Mono',monospace;font-size:13px;outline:none;border-radius:4px"
+                onkeydown="if(event.key==='Enter') confirmDisableAutoLock()">
         </div>
-        <div style="font-size:11px;color:var(--danger);min-height:18px;letter-spacing:1px" id="lock-setup-error"></div>
+
+        <div style="font-size:11px;color:var(--danger);min-height:18px;letter-spacing:1px;margin-top:8px" id="lock-setup-error"></div>
         <div class="modal-footer">
             <button class="btn btn-primary btn-sm" onclick="saveLockSettings()">&#x2713; Save</button>
-            <button class="btn btn-sm btn-danger" onclick="disableAutoLock(); closeModal('lockSettingsModal')">Disable Lock</button>
+            <button class="btn btn-sm btn-danger" id="lock-disable-btn" style="display:none" onclick="confirmDisableAutoLock()">Disable Lock</button>
             <button class="btn btn-sm" style="border-color:var(--text-muted);color:var(--text-muted)" onclick="closeModal('lockSettingsModal')">Cancel</button>
         </div>
     </div>
@@ -579,6 +594,6 @@
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-<script src="vault.js"></script>
-</body>
+<script src="vault.js?v=3">
+</script></body>
 </html>
